@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id               String            @id @default(cuid())
+  name             String?
+  email            String            @unique
+  emailVerified    DateTime?
+  password         String?
+  avatar           String?
+  status           String?
+  token            String?
+  username         String?
+  image            String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  accounts         Account[]
+  chatParticipants ChatParticipant[]
+  sentMessages     Messages[]        @relation("MessageSender")
+  sessions         Session[]
+}
+
+model Chats {
+  id           String            @id @default(cuid())
+  ChatName     String?
+  isGroupChat  Boolean           @default(false)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  participants ChatParticipant[]
+  messages     Messages[]
+}
+
+model Messages {
+  id        String   @id @default(cuid())
+  sender_id String
+  content   String
+  chatId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  chat      Chats    @relation(fields: [chatId], references: [id])
+  sender    User     @relation("MessageSender", fields: [sender_id], references: [id])
+}
+
+model ChatParticipant {
+  id      String  @id @default(cuid())
+  chat_id String
+  user_id String
+  role    String? @default("member")
+  chat    Chats   @relation(fields: [chat_id], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([chat_id, user_id])
+}
