@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { Search, Send, Loader2 } from 'lucide-react'
+import { Search, Send, Loader2, X, UserPlus, UserMinus, Shield, LogOut } from 'lucide-react'
 import { userChatStore } from '@/store/chatStore';
 import axios from 'axios';
 
@@ -7,6 +7,7 @@ interface User {
   id: string;
   name: string;
   avatar: string | null;
+  role: string
 }
 
 interface Message {
@@ -23,10 +24,87 @@ function UserChat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [messageInput, setMessageInput] = useState('');
+  const [showModal, setShowModal] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [members, setMembers] = useState<User[]>([]);
+
 
   console.log("current chat id in userchat : ", currentChatId);
   console.log("prev chat id in userchat : ", prevChatId);
+
+
+  useEffect(() => {
+    const fetchMembers = async () => {
+      if (showModal && currentChatId) {
+        try {
+          setLoading(true);
+          const res = await axios.get(`/api/chats/${currentChatId}/members`);
+          console.log("members : ", res.data);
+          setMembers(res.data.members);
+        } catch (err) {
+          console.error("Error fetching members:", err);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    fetchMembers();
+  }, [showModal, currentChatId]);
+
+
+  const handleAddMember = () => {
+    const email = prompt("Enter email of user to add:");
+    if (email) {
+      console.log('Adding member:', email);
+      alert('Member added successfully!');
+    }
+  };
+
+  const handleRemoveMember = async (memberId: string, chatId: string, operation_perf_id: string | undefined) => {
+    try {
+      const res = await axios.post(`/api/chats/Add_Remove?method=remove`, {
+        memberId, chatId, operation_perf_id
+      })
+
+      if (res.data.message === "Member removed successfully") {
+        setMembers(prev => prev.filter(m => m.id !== memberId));
+        alert('Member removed');
+      } else if (res.data.message === "Insufficient permissions to remove member") {
+        alert("don't have suffficient permission");
+      }
+    } catch (error: any) {
+      console.error("Error removing member:", error);
+      alert(error.response?.data?.message || "Failed to remove member. Please try again.");
+    }
+  };
+
+  const handleUpgradeRole = async (memberId: string, chatId: string, operation_perf_id: string | undefined) => {
+    try {
+      const res = await axios.post(`/api/chats/groupRoleUpdation?method=update`, {
+        memberId, chatId, operation_perf_id
+      })
+
+      if (res.data.message === "Member promoted to admin") {
+        setMembers(prev => prev.map(m =>
+          m.id === memberId ? { ...m, role: "admin" } : m
+        ));
+        alert(`Role updated to admin`);
+      } else if (res.data.message === "You cannot promote this member") {
+        alert(`yDon't have sufficient authority`);
+      }
+    } catch (error: any) {
+      console.error("Error upgrading member role:", error);
+      alert(error.response?.data?.message || "Failed to update role. Please try again.");
+    }
+  };
+
+  const handleLeaveGroup = () => {
+    if (confirm("Leave this group?")) {
+      setShowModal(false);
+      alert('You left the group');
+    }
+  };
+
 
   useEffect(() => {
     if (prevChatId !== currentChatId) {
@@ -37,34 +115,34 @@ function UserChat() {
     }
   }, [currentChatId, prevChatId, setPrevChatId]);
 
-useEffect(() => {
-  const fetchChatData = async () => {
-    if (!currentChatId || (page > 0 && !cursor)) return; // <- stop if no more data
+  useEffect(() => {
+    const fetchChatData = async () => {
+      if (!currentChatId || (page > 0 && !cursor)) return; // <- stop if no more data
 
-    try {
-      setLoading(true);
-      const res = await axios.get(`/api/chats/${currentChatId}`, {
-        params: {
-          limit: 10,
-          cursor: cursor === "" ? null : cursor,
-        },
-      });
+      try {
+        setLoading(true);
+        const res = await axios.get(`/api/chats/${currentChatId}`, {
+          params: {
+            limit: 10,
+            cursor: cursor === "" ? null : cursor,
+          },
+        });
 
-      const newMessages = res.data.messages || []
-      setMessages((prevMessages) => 
+        const newMessages = res.data.messages || []
+        setMessages((prevMessages) =>
 
-       [...prevMessages, ...newMessages]);
+          [...prevMessages, ...newMessages]);
 
-      setCursor(res.data.nextCursor || null);
-    } catch (error) {
-      console.error("Error fetching messages:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+        setCursor(res.data.nextCursor || null);
+      } catch (error) {
+        console.error("Error fetching messages:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  fetchChatData();
-}, [page, currentChatId]);
+    fetchChatData();
+  }, [page, currentChatId]);
 
 
   const handleScroll = () => {
@@ -78,11 +156,12 @@ useEffect(() => {
   }
 
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!messageInput.trim()) return;
 
-    console.log("Sending message:", messageInput);
+    const res = await axios.post(`/api/chats/${currentChatId}`, { content: messageInput, senderId: currentUserId });
+    console.log(res);
     setMessageInput('');
   };
 
@@ -119,6 +198,41 @@ useEffect(() => {
 
   return (
     <div className="flex flex-col h-full w-full bg-gray-50">
+      <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200 shadow-sm">
+        <div className="flex items-center gap-3">
+          {/* Placeholder for chat name or avatar */}
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
+            U
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-gray-800">User Name</h2>
+            <p className="text-xs text-gray-500">Online</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 text-gray-600">
+          <button
+            className="p-2 rounded-full hover:bg-blue-50 hover:text-blue-600 transition"
+            title="Start Video Call"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 8h6a2 2 0 012 2v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4a2 2 0 012-2z" />
+            </svg>
+          </button>
+
+          <button
+            className="p-2 rounded-full hover:bg-blue-50 hover:text-blue-600 transition"
+            title="Chat Settings"
+            onClick={() => setShowModal(true)}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10.325 4.317a1 1 0 011.35 0l.622.62a1 1 0 00.708.293h.902a1 1 0 01.986.836l.115.693a1 1 0 00.293.708l.62.622a1 1 0 010 1.35l-.62.622a1 1 0 00-.293.708l-.115.693a1 1 0 01-.986.836h-.902a1 1 0 00-.708.293l-.622.62a1 1 0 01-1.35 0l-.622-.62a1 1 0 00-.708-.293H8.093a1 1 0 01-.986-.836l-.115-.693a1 1 0 00-.293-.708l-.62-.622a1 1 0 010-1.35l.62-.622a1 1 0 00.293-.708l.115-.693a1 1 0 01.986-.836h.902a1 1 0 00.708-.293l.622-.62zM12 15a3 3 0 100-6 3 3 0 000 6z" />
+            </svg>
+          </button>
+
+
+        </div>
+      </div>
       <div
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto p-4 space-y-4"
@@ -166,8 +280,8 @@ useEffect(() => {
                     </span>
                   </div>
                   <div className={`${isCurrentUser
-                      ? 'bg-blue-600 text-white rounded-lg rounded-tr-none'
-                      : 'bg-white text-gray-800 rounded-lg rounded-tl-none border border-gray-200'
+                    ? 'bg-blue-600 text-white rounded-lg rounded-tr-none'
+                    : 'bg-white text-gray-800 rounded-lg rounded-tl-none border border-gray-200'
                     } px-4 py-2 shadow-sm`}>
                     <p className="text-sm break-words leading-relaxed">
                       {message.content}
@@ -210,6 +324,113 @@ useEffect(() => {
           </button>
         </form>
       </div>
+
+
+      {/* Settings Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white w-full max-w-md rounded-lg shadow-xl">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold text-gray-900">Chat Settings</h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="p-1 hover:bg-gray-100 rounded-full transition"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+              </div>
+            ) : (
+              <div className="p-4 space-y-4">
+                {/* Members List */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-gray-700">Members ({members.length})</h3>
+                    <button
+                      onClick={handleAddMember}
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      + Add
+                    </button>
+                  </div>
+
+                  <div className="space-y-1 max-h-64 overflow-y-auto">
+                    {members.map((member) => (
+                      <div
+                        key={member.id}
+                        className="flex items-center justify-between p-2 rounded hover:bg-gray-50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
+                            {member.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {member.id === currentUserId ? 'You' : member.name}
+                            </p>
+                            <p className="text-xs text-gray-500">{member.role}</p>
+                          </div>
+                        </div>
+
+                        {member.id !== currentUserId && (
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleUpgradeRole(member.id, currentChatId, currentUserId)}
+                              className="p-1.5 hover:bg-gray-200 rounded"
+                              title="Change Role"
+                            >
+                              <Shield className="h-4 w-4 text-gray-600" />
+                            </button>
+                            <button
+                              onClick={() => handleRemoveMember(member.id, currentChatId, currentUserId)}
+                              className="p-1.5 hover:bg-gray-200 rounded"
+                              title="Remove"
+                            >
+                              <UserMinus className="h-4 w-4 text-gray-600" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="pt-2 border-t space-y-2">
+                  <button
+                    onClick={handleAddMember}
+                    className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded transition"
+                  >
+                    <UserPlus className="h-5 w-5 text-gray-600" />
+                    <span className="text-sm font-medium text-gray-900">Add Members</span>
+                  </button>
+
+                  <button
+                    onClick={() => { }}
+                    className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded transition"
+                  >
+                    <Shield className="h-5 w-5 text-gray-600" />
+                    <span className="text-sm font-medium text-gray-900">Manage Roles</span>
+                  </button>
+
+                  <button
+                    onClick={handleLeaveGroup}
+                    className="w-full flex items-center gap-3 p-3 hover:bg-red-50 rounded transition"
+                  >
+                    <LogOut className="h-5 w-5 text-red-600" />
+                    <span className="text-sm font-medium text-red-600">Leave Chat</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

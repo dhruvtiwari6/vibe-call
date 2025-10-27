@@ -51,19 +51,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{id: str
         // Your existing POST logic here...
         let chat = await prisma.chats.findFirst({
             where: {
-                isGroupChat: false,
-                participants: {
-                    every: {
-                        user_id: { in: [senderId, recipientId] }
-                    }
-                }
+                id : recipientId
             },
         });
 
        let actualChatId: string | undefined = chat?.id;
 
         if (!chat) {  // chatId is actually recipient user ID, create new chat
-            console.log("theere does not eexist a chat betweeen these users")
+            console.log("there does not eexist a chat betweeen these users")
             try {
                 const newChat = await prisma.chats.create({
                     data: {

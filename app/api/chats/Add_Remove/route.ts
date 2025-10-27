@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
         const method = searchParams.get("method") as Method;
-        
+
         const body: { memberId: string, chatId: string, operation_perf_id: string } = await req.json();
         const { memberId, chatId, operation_perf_id } = body;
 
@@ -37,7 +37,10 @@ export async function POST(req: NextRequest) {
             if (ownership.role === "superAdmin" || ownership.role === "admin") {
                 await prisma.chatParticipant.delete({
                     where: {
-                        id: memberId
+                        chat_id_user_id: {
+                            chat_id: chatId,
+                            user_id: memberId
+                        }
                     }
                 });
 
@@ -51,8 +54,8 @@ export async function POST(req: NextRequest) {
 
     } catch (error) {
         console.error("Error in POST /api/chat-participants:", error);
-        return NextResponse.json({ 
-            message: "An unexpected error occurred. Please try again later." 
+        return NextResponse.json({
+            message: "An unexpected error occurred. Please try again later."
         }, { status: 500 });
     }
 }
