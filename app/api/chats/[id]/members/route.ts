@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db";
-import { turborepoTraceAccess } from "next/dist/build/turborepo-access-trace";
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
