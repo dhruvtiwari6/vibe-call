@@ -27,6 +27,9 @@ function UserChat() {
   const [showModal, setShowModal] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [members, setMembers] = useState<User[]>([]);
+  const [isFetching, setIsFetching] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+
 
 
   console.log("current chat id in userchat : ", currentChatId);
@@ -112,15 +115,22 @@ function UserChat() {
       setMessages([]);
       setCursor("");
       setPrevChatId(currentChatId || "");
+      setIsFetching(false);
     }
-  }, [currentChatId, prevChatId, setPrevChatId]);
+  }, [currentChatId]);
+
 
   useEffect(() => {
     const fetchChatData = async () => {
-      if (!currentChatId || (page > 0 && !cursor)) return; // <- stop if no more data
+
+      if (!currentChatId || (page > 0 && !cursor) || isFetching) return;
+
+      console.log("page change kia haaa");
 
       try {
+        setIsFetching(true);
         setLoading(true);
+        console.log("kya hua");
         const res = await axios.get(`/api/chats/${currentChatId}`, {
           params: {
             limit: 10,
@@ -128,16 +138,20 @@ function UserChat() {
           },
         });
 
-        const newMessages = res.data.messages || []
-        setMessages((prevMessages) =>
+        const newMessages = res.data.messages || [];
 
-          [...prevMessages, ...newMessages]);
+        setMessages((prevMessages) => {
+          const existingIds = new Set(prevMessages.map(m => m.id));
+          const uniqueNewMessages = newMessages.filter((msg: Message) => !existingIds.has(msg.id));
+          return [...prevMessages, ...uniqueNewMessages];
+        });
 
         setCursor(res.data.nextCursor || null);
       } catch (error) {
         console.error("Error fetching messages:", error);
       } finally {
         setLoading(false);
+        setIsFetching(false);
       }
     };
 
@@ -157,12 +171,17 @@ function UserChat() {
 
 
   const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!messageInput.trim()) return;
-
-    const res = await axios.post(`/api/chats/${currentChatId}`, { content: messageInput, senderId: currentUserId });
-    console.log(res);
-    setMessageInput('');
+    try {
+      e.preventDefault();
+      if (!messageInput.trim()) return;
+      setIsSending(true);
+      const res = await axios.post(`/api/chats/${currentChatId}`, { content: messageInput, senderId: currentUserId });
+      setMessageInput('');
+    } catch (error) {
+      console.log("error in sending message ", error)
+    } finally {
+      setIsSending(false);
+    }
   };
 
   if (!currentChatId) {
@@ -319,8 +338,18 @@ function UserChat() {
             disabled={!messageInput.trim()}
             className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 font-medium"
           >
-            <Send className="h-4 w-4" />
-            <span className="hidden sm:inline">Send</span>
+            {isSending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="hidden sm:inline">Sending...</span>
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4" />
+                <span className="hidden sm:inline">Send</span>
+              </>
+            )}
+
           </button>
         </form>
       </div>
