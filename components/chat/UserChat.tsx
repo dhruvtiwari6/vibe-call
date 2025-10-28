@@ -108,6 +108,34 @@ function UserChat() {
     }
   };
 
+useEffect(() => {
+  const container = scrollContainerRef.current;
+  if (!container) return;
+
+  const isInitialLoad = page === 0 && messages.length > 0;
+  const shouldScrollToBottom = isInitialLoad || isSending;
+
+  if (shouldScrollToBottom) {
+    requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight;
+    });
+  }
+}, [messages, page, isSending]);
+
+useEffect(() => {
+  const container = scrollContainerRef.current;
+  if (!container) return;
+
+  // Wait for messages to load before scrolling
+  const timeout = setTimeout(() => {
+    if (messages.length > 0) {
+      container.scrollTop = container.scrollHeight;
+    }
+  }, 150); // Slightly longer delay to ensure DOM is updated
+
+  return () => clearTimeout(timeout);
+}, [currentChatId]);
+
 
   useEffect(() => {
     if (prevChatId !== currentChatId) {
@@ -133,17 +161,17 @@ function UserChat() {
         console.log("kya hua");
         const res = await axios.get(`/api/chats/${currentChatId}`, {
           params: {
-            limit: 10,
+            limit: 20,
             cursor: cursor === "" ? null : cursor,
           },
         });
 
-        const newMessages = res.data.messages || [];
+        const newMessages = res.data.messages.reverse() || [];
 
         setMessages((prevMessages) => {
           const existingIds = new Set(prevMessages.map(m => m.id));
           const uniqueNewMessages = newMessages.filter((msg: Message) => !existingIds.has(msg.id));
-          return [...prevMessages, ...uniqueNewMessages];
+          return [...uniqueNewMessages, ...prevMessages];
         });
 
         setCursor(res.data.nextCursor || null);
@@ -159,16 +187,24 @@ function UserChat() {
   }, [page, currentChatId]);
 
 
-  const handleScroll = () => {
-    const scrollTop = scrollContainerRef.current?.scrollTop ?? 0;
-    const scrollHeight = scrollContainerRef.current?.scrollHeight ?? 0;
-    const clientHeight = scrollContainerRef.current?.clientHeight ?? 0;
+const handleScroll = () => {
+  const container = scrollContainerRef.current;
+  if (!container || isFetching) return;
 
-    if (scrollTop + clientHeight + 2 >= scrollHeight!) {
-      setPage((prevPage) => prevPage + 1);
-    }
+  const scrollTop = container.scrollTop;
+
+  if (scrollTop <= 100 && cursor) {
+    const previousScrollHeight = container.scrollHeight;
+    
+    setPage(prev => prev + 1); 
+
+    setTimeout(() => {
+      const newScrollHeight = container.scrollHeight;
+      const heightDiff = newScrollHeight - previousScrollHeight;
+      container.scrollTop = scrollTop + heightDiff;
+    }, 50);
   }
-
+};
 
   const handleSendMessage = async (e: React.FormEvent) => {
     try {

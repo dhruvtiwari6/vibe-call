@@ -7,14 +7,12 @@ export async function GET(req: NextRequest, context: { params: Promise<{id: stri
     const cursor = searchParams.get("cursor");
     const limit = parseInt(searchParams.get("limit") || "10");
 
-    
-
     try {
         const messages = await prisma.messages.findMany({
             where: { chatId: id },
             take: limit,
             ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-            orderBy: { createdAt: "asc" },
+            orderBy: { createdAt: "desc" },
             include: {
                 sender: {
                     select: { id: true, name: true, avatar: true }
