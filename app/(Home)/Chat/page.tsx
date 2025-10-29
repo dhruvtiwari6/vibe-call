@@ -31,7 +31,7 @@ interface SearchGroup {
 
 export default function Chats() {
     const { isSidebarOpen, toggleSidebar, closeSidebar } = useSidebarStore();
-    const { chats, fetchRecentChats, setCurrentUserId, setCurrentChatId, currentUserId} = userChatStore();
+    const { chats, fetchRecentChats, setCurrentUserId, setCurrentChatId, currentUserId } = userChatStore();
     const { data: session, status } = useSession();
 
     const [query, setQuery] = useState('');
@@ -51,7 +51,7 @@ export default function Chats() {
         });
 
         console.log("current chat id : ", response.data.chatId)
-        setCurrentChatId(response.data.chatId); 
+        setCurrentChatId(response.data.chatId);
     }
 
     const loadGroupChat = (chatId: string) => {
@@ -61,6 +61,8 @@ export default function Chats() {
     }
 
     useEffect(() => {
+        console.log("current status of user is : ", status);
+
         const loadChats = async () => {
             try {
                 if (!session?.user?.email) return;
@@ -84,10 +86,16 @@ export default function Chats() {
 
             try {
                 setLoading(true);
-                const res = await fetch(
-                    `/api/user/search?query=${encodeURIComponent(query)}&limit=10&userId=${currentUserId}`
-                );
-                const data = await res.json();
+
+                const res = await axios.get("/api/user/search", {
+                    params: {
+                        query,
+                        limit: 10,
+                        userId: currentUserId,
+                    },
+                });
+
+                const data = await res.data;
                 setSearchUsers(data.users || []);
                 setSearchGroups(data.groups || []);
             } catch (err) {
@@ -155,9 +163,9 @@ export default function Chats() {
                                         </h3>
                                         <ul>
                                             {searchGroups.map((group) => (
-                                                <li 
-                                                    key={group.id} 
-                                                    onClick={() => loadGroupChat(group.id)} 
+                                                <li
+                                                    key={group.id}
+                                                    onClick={() => loadGroupChat(group.id)}
                                                     className="flex items-center p-2 hover:bg-gray-100 rounded-lg cursor-pointer"
                                                 >
                                                     <div className="w-8 h-8 rounded-full mr-3 bg-blue-500 flex items-center justify-center">
@@ -183,9 +191,9 @@ export default function Chats() {
                                         </h3>
                                         <ul>
                                             {searchUsers.map((user) => (
-                                                <li 
-                                                    key={user.id} 
-                                                    onClick={() => loadChat(user.id)} 
+                                                <li
+                                                    key={user.id}
+                                                    onClick={() => loadChat(user.id)}
                                                     className="flex items-center p-2 hover:bg-gray-100 rounded-lg cursor-pointer"
                                                 >
                                                     {user.avatar ? (
