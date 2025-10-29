@@ -12,10 +12,10 @@ interface User {
 }
 
 interface SearchUser {
-    id: string;
-    name: string;
-    email: string;
-    avatar: string | null;
+  id: string;
+  name: string;
+  email: string;
+  avatar: string | null;
 }
 
 interface Message {
@@ -70,26 +70,35 @@ function UserChat() {
 
   const handleAddMember = async (userId: string) => {
     try {
+      setAddingMemberId(userId);
       const res = await axios.post(`/api/chats/Add_Remove?method=add`, {
         memberId: userId,
         chatId: currentChatId,
         operation_perf_id: currentUserId
       });
 
-      if (res.data.message === "Member added successfully") {
+      if (res.data.message === "new member added successfully") {
+        const userToAdd = searchUsers.find(u => u.id === userId);
+
+        if (userToAdd) {
+          setMembers(prev => [...prev, {
+            id: userToAdd.id,
+            name: userToAdd.name,
+            avatar: userToAdd.avatar,
+            role: "member" 
+          }]);
+        }
+
         alert('Member added successfully!');
-        setShowAddMemberModal(false);
-        setSearchQuery("");
-        setSearchUsers([]);
-        // Refresh members list
-        const membersRes = await axios.get(`/api/chats/${currentChatId}/members`);
-        setMembers(membersRes.data.members);
       }
     } catch (error: any) {
       console.error("Error adding member:", error);
       alert(error.response?.data?.message || "Failed to add member. Please try again.");
+    } finally {
+      setAddingMemberId(null); // ✅ hide loader
     }
   };
+
 
   const handleRemoveMember = async (memberId: string, chatId: string, operation_perf_id: string | undefined) => {
     try {
@@ -136,33 +145,33 @@ function UserChat() {
     }
   };
 
-useEffect(() => {
-  const container = scrollContainerRef.current;
-  if (!container) return;
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
 
-  const isInitialLoad = page === 0 && messages.length > 0;
-  const shouldScrollToBottom = isInitialLoad || isSending;
+    const isInitialLoad = page === 0 && messages.length > 0;
+    const shouldScrollToBottom = isInitialLoad || isSending;
 
-  if (shouldScrollToBottom) {
-    requestAnimationFrame(() => {
-      container.scrollTop = container.scrollHeight;
-    });
-  }
-}, [messages, page, isSending]);
-
-useEffect(() => {
-  const container = scrollContainerRef.current;
-  if (!container) return;
-
-  // Wait for messages to load before scrolling
-  const timeout = setTimeout(() => {
-    if (messages.length > 0) {
-      container.scrollTop = container.scrollHeight;
+    if (shouldScrollToBottom) {
+      requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+      });
     }
-  }, 150); // Slightly longer delay to ensure DOM is updated
+  }, [messages, page, isSending]);
 
-  return () => clearTimeout(timeout);
-}, [currentChatId]);
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    // Wait for messages to load before scrolling
+    const timeout = setTimeout(() => {
+      if (messages.length > 0) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }, 150); // Slightly longer delay to ensure DOM is updated
+
+    return () => clearTimeout(timeout);
+  }, [currentChatId]);
 
 
   useEffect(() => {
@@ -175,7 +184,6 @@ useEffect(() => {
     }
   }, [currentChatId]);
 
-  //debounced search
   useEffect(() => {
     const delayDebounce = setTimeout(async () => {
       if (searchQuery.trim() === '') {
@@ -185,18 +193,28 @@ useEffect(() => {
 
       try {
         setSearchLoading(true);
-        const res = await axios.get('/api/user/search_members_only', {
+        const res = await axios.get('/api/chats/isthisChat', {
           params: {
+            chatId: currentChatId,
             searchQuery,
             limit: 10,
             userId: currentUserId,
           }
         })
 
+
+        console.log(res);
+
         const data = await res.data;
         setSearchUsers(data.users || []);
 
-      } catch (error) {
+      } catch (error: any) {
+        console.log("sadhfasd")
+
+        if (error.response?.data?.error) {
+          console.log("yes hhh")
+          alert(error.response.data.error)
+        }
         console.error(error);
       } finally {
         setSearchLoading(false);
@@ -248,24 +266,24 @@ useEffect(() => {
   }, [page, currentChatId]);
 
 
-const handleScroll = () => {
-  const container = scrollContainerRef.current;
-  if (!container || isFetching) return;
+  const handleScroll = () => {
+    const container = scrollContainerRef.current;
+    if (!container || isFetching) return;
 
-  const scrollTop = container.scrollTop;
+    const scrollTop = container.scrollTop;
 
-  if (scrollTop <= 100 && cursor) {
-    const previousScrollHeight = container.scrollHeight;
-    
-    setPage(prev => prev + 1); 
+    if (scrollTop <= 100 && cursor) {
+      const previousScrollHeight = container.scrollHeight;
 
-    setTimeout(() => {
-      const newScrollHeight = container.scrollHeight;
-      const heightDiff = newScrollHeight - previousScrollHeight;
-      container.scrollTop = scrollTop + heightDiff;
-    }, 50);
-  }
-};
+      setPage(prev => prev + 1);
+
+      setTimeout(() => {
+        const newScrollHeight = container.scrollHeight;
+        const heightDiff = newScrollHeight - previousScrollHeight;
+        container.scrollTop = scrollTop + heightDiff;
+      }, 50);
+    }
+  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     try {
@@ -613,7 +631,7 @@ const handleScroll = () => {
                     <ul className="space-y-1">
                       {searchUsers.map((user) => {
                         const isAlreadyMember = members.some(m => m.id === user.id);
-                        
+
                         return (
                           <li
                             key={user.id}
@@ -653,10 +671,22 @@ const handleScroll = () => {
                             ) : (
                               <button
                                 onClick={() => handleAddMember(user.id)}
-                                className="ml-2 px-3 py-1.5 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition flex-shrink-0"
+                                disabled={addingMemberId === user.id}
+                                className={`ml-2 px-3 py-1.5 rounded text-sm flex items-center justify-center gap-2 flex-shrink-0 
+    ${addingMemberId === user.id
+                                    ? 'bg-blue-400 cursor-not-allowed'
+                                    : 'bg-blue-600 hover:bg-blue-700 text-white transition'}`}
                               >
-                                Add
+                                {addingMemberId === user.id ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <span>Adding...</span>
+                                  </>
+                                ) : (
+                                  'Add'
+                                )}
                               </button>
+
                             )}
                           </li>
                         );

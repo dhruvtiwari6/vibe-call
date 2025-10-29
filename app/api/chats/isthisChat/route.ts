@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Check if the chat exists
-    const chat = await prisma.chats.findFirst({
+    const chat = await prisma.chats.findUnique({
       where: { id: chatId ,
       },
     });
