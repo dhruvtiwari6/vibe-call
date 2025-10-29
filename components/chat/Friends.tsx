@@ -6,7 +6,7 @@ import axios from "axios";
 
 export default function Friends() {
     const { isSidebarOpen, toggleSidebar, closeSidebar } = useSidebarStore();
-    const { chats, fetchRecentChats, isLoading ,  setCurrentChatId, currentChatId } = userChatStore();
+    const { chats, fetchRecentChats, isLoading, setCurrentChatId, currentChatId, setCurrentChatName, currentUserId } = userChatStore();
 
     // Function to get initials from name
     const getInitials = (name: string) => {
@@ -17,13 +17,30 @@ export default function Friends() {
             .toUpperCase()
             .slice(0, 2);
     };
+const loadChat = async (id: string) => {
+    closeSidebar();
+    console.log("fuuu");
 
-    const loadChat = async(id : string) => {
-        closeSidebar();
-        const response = await axios.get(`/api/chats/${id}`);
-        setCurrentChatId(id);
-        console.log(currentChatId)
+    try {
+        const res = await axios.get('/api/chats/chatName', {
+            params: {
+                chatId: id,
+                userId: currentUserId
+            }
+        });
+
+        if (res.status === 200) {
+            setCurrentChatName(res.data.chatName);
+            setCurrentChatId(id);
+        } else {
+            console.warn("Request completed but returned non-200 status:", res.status);
+        }
+    } catch (error: any) {
+        console.error("Error in request setup:", error);
+        
     }
+};
+
 
     return (
         <div className="flex-1 overflow-y-auto h-[calc(100vh-80px)]">
