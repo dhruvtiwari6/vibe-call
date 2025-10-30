@@ -31,7 +31,18 @@ interface SearchGroup {
 
 export default function Chats() {
     const { isSidebarOpen, toggleSidebar, closeSidebar } = useSidebarStore();
-    const { chats, fetchRecentChats, setCurrentUserId, setCurrentChatId, currentUserId, setCurrentChatName, currentChatName, createSocket } = userChatStore();
+    const { 
+        chats, 
+        fetchRecentChats, 
+        setCurrentUserId, 
+        setCurrentChatId, 
+        currentUserId, 
+        setCurrentChatName, 
+        currentChatName, 
+        createSocket ,
+        setIndividualStatus
+
+    } = userChatStore();
     const { data: session, status } = useSession();
 
     const [query, setQuery] = useState('');
@@ -68,7 +79,6 @@ export default function Chats() {
                     if (!session?.user?.email) return;
                     setCurrentUserId(session.user.id || "");
                     createSocket(session.user.id || "");
-                    await axios.put('/api/user/changeStatus', {}, { params: { cs: 'online', id: session.user?.id } });
                     await fetchRecentChats(session.user.email);
 
                 } catch (error) {
