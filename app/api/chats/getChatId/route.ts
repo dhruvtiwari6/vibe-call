@@ -14,37 +14,75 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    let user2Details;
+
+
+
     // 🧠 Step 1: Check if user2Id is actually a chatId
     const chatById = await prisma.chats.findUnique({
       where: { id: user2Id },
       include: { participants: true },
     });
 
-    if (chatById) {
-      console.log("Found chat by ID");
-      return NextResponse.json({ chatId: chatById.id }, { status: 200 });
+    if (chatById && chatById.participants.length === 2 && chatById.isGroupChat === false) {
+      // Find the other participant (not the current user)
+      const otherParticipant = chatById.participants.find(p => p.user_id !== user1Id);
+
+      if (!otherParticipant) {
+        return NextResponse.json({ error: "Other participant not found" }, { status: 404 });
+      }
+
+      // Fetch the user details
+      user2Details = await prisma.user.findUnique({
+        where: { id: otherParticipant.id },
+      });
+
+      return NextResponse.json(
+        { chatId: chatById.id, chatName: user2Details?.name },
+        { status: 200 }
+      );
     }
 
-    // 🧠 Step 2: Check if a 1:1 chat already exists between the two users
+    console.log("its actual group chat");
+    if (chatById) {
+      console.log("Found chat by ID");
+      return NextResponse.json({ chatId: chatById.id, chatName: chatById.ChatName }, { status: 200 });
+    }
+
+    //if it is user id and they are already being in a chat
     const existingChat = await prisma.chats.findFirst({
       where: {
         isGroupChat: false,
         AND: [
           { participants: { some: { user_id: user1Id } } },
           { participants: { some: { user_id: user2Id } } },
-          { participants: { every: { user_id: { in: [user1Id, user2Id] } } } },
+          // Ensure there are no extra participants
+          {
+            participants: {
+              every: {
+                user_id: { in: [user1Id, user2Id] },
+              },
+            },
+          },
         ],
       },
-      include: { participants: true },
+      include: {
+        participants: {
+          include: { user: true },
+        },
+      },
+    });
+
+    user2Details = await prisma.user.findUnique({
+      where: { id: user2Id },
     });
 
     if (existingChat) {
-      console.log("Found existing chat between users");
-      return NextResponse.json({ chatId: existingChat.id }, { status: 200 });
+      return NextResponse.json({ chatId: existingChat.id, chatName: user2Details?.name }, { status: 200 });
+
     }
 
-    // 🧠 Step 3: Create a new chat between them
-    console.log("No chat found — creating new one");
+    console.log("No chat found — creating new one : ", user2Id);
     const newChat = await prisma.chats.create({
       data: {
         isGroupChat: false,
@@ -57,7 +95,7 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ chatId: newChat.id }, { status: 201 });
+    return NextResponse.json({ chatId: newChat.id, chatName: user2Details?.name }, { status: 201 });
   } catch (err) {
     console.error("GET /api/chats error:", err);
     return NextResponse.json(

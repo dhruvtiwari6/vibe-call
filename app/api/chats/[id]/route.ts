@@ -19,6 +19,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{id: stri
                 }
             }
         })
+        
 
         console.log(messages.length)
         return NextResponse.json({

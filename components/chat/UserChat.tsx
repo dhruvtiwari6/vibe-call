@@ -45,8 +45,8 @@ function UserChat() {
 
 
 
-  console.log("current chat id in userchat : ", currentChatId);
-  console.log("prev chat id in userchat : ", prevChatId);
+  // console.log("current chat id in userchat : ", currentChatId);
+  // console.log("prev chat id in userchat : ", prevChatId);
 
 
   useEffect(() => {

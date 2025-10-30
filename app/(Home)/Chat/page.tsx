@@ -31,7 +31,7 @@ interface SearchGroup {
 
 export default function Chats() {
     const { isSidebarOpen, toggleSidebar, closeSidebar } = useSidebarStore();
-    const { chats, fetchRecentChats, setCurrentUserId, setCurrentChatId, currentUserId } = userChatStore();
+    const { chats, fetchRecentChats, setCurrentUserId, setCurrentChatId, currentUserId, setCurrentChatName, currentChatName, createSocket } = userChatStore();
     const { data: session, status } = useSession();
 
     const [query, setQuery] = useState('');
@@ -50,31 +50,36 @@ export default function Chats() {
             }
         });
 
-        console.log("current chat id : ", response.data.chatId)
-        setCurrentChatId(response.data.chatId);
+        if (response.status === 200) {
+            setCurrentChatId(response.data.chatId);
+            setCurrentChatName(response.data.chatName);
+            console.log("currentChatName : ", currentChatName);
+        }
     }
 
-    const loadGroupChat = (chatId: string) => {
-        console.log("group chat loaded");
-        closeSidebar();
-        setCurrentChatId(chatId);
-    }
+
 
     useEffect(() => {
         console.log("current status of user is : ", status);
 
-        const loadChats = async () => {
-            try {
-                if (!session?.user?.email) return;
-                setCurrentUserId(session.user.id || "");
-                await fetchRecentChats(session.user.email);
-            } catch (error) {
-                console.error('Failed to fetch chats:', error);
-            }
-        };
-        loadChats();
+        if (status === "authenticated") {
+            const loadChats = async () => {
+                try {
+                    if (!session?.user?.email) return;
+                    setCurrentUserId(session.user.id || "");
+                    createSocket(session.user.id || "");
+                    await axios.put('/api/user/changeStatus', {}, { params: { cs: 'online', id: session.user?.id } });
+                    await fetchRecentChats(session.user.email);
+
+                } catch (error) {
+                    console.error('Failed to fetch chats:', error);
+                }
+            };
+            loadChats();
+        }
     }, [status]);
 
+   
     // Debounced search
     useEffect(() => {
         const delayDebounce = setTimeout(async () => {
@@ -165,7 +170,7 @@ export default function Chats() {
                                             {searchGroups.map((group) => (
                                                 <li
                                                     key={group.id}
-                                                    onClick={() => loadGroupChat(group.id)}
+                                                    onClick={() => loadChat(group.id)}
                                                     className="flex items-center p-2 hover:bg-gray-100 rounded-lg cursor-pointer"
                                                 >
                                                     <div className="w-8 h-8 rounded-full mr-3 bg-blue-500 flex items-center justify-center">
