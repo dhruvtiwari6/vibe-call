@@ -38,25 +38,41 @@ app.prepare().then(() => {
             console.log('user disconnected: ', userId);
         });
 
-        socket.on('IndividualStatus', async(data) => {
+        socket.on('IndividualStatus', async (data) => {
             console.log("Status event received for id: ", data.id);
 
             const participants = await prisma.chats.findFirst({
                 where: { id: data.chatId },
-                include : {
+                include: {
                     participants: true
                 }
-            }) 
+            })
 
-            const otherParticipant = participants?.participants.find(participant => participant.user_id !== data.id)!;
-            console.log("online users set: ", onlineUsers);
+            const isGroupChat = await prisma.chats.findFirst({
+                where: { id: data.chatId }
+            });
 
-            if (onlineUsers.has(otherParticipant.user_id)) {
-                console.log("User is online: ", otherParticipant.id);
-                socket.emit('IndividualStatus', { status: 'online' });
+            if (isGroupChat?.isGroupChat === true) {
+                const groupParticipants = participants?.participants
+                    .filter(p => p.user_id !== data.id)
+                    .map(p => p.user_id);
+
+                const onlineCount = groupParticipants?.filter(id => onlineUsers.has(id)).length || 0;
+
+                socket.emit('IndividualStatus', { status: `${onlineCount} online` });
+
             } else {
-                console.log("User is offline: ", otherParticipant.id);
-                socket.emit('IndividualStatus', { status: 'offline' });
+
+                const otherParticipant = participants?.participants.find(participant => participant.user_id !== data.id)!;
+                console.log("online users set: ", onlineUsers);
+
+                if (onlineUsers.has(otherParticipant.user_id)) {
+                    console.log("User is online: ", otherParticipant.id);
+                    socket.emit('IndividualStatus', { status: 'online' });
+                } else {
+                    console.log("User is offline: ", otherParticipant.id);
+                    socket.emit('IndividualStatus', { status: 'offline' });
+                }
             }
         });
     });
