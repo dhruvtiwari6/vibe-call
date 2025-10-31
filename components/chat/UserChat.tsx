@@ -27,7 +27,7 @@ interface Message {
 }
 
 function UserChat() {
-  const { currentChatId, prevChatId, setPrevChatId, currentUserId, cursor, setCursor, currentChatName , currentStatus, socket, count, recentMessages} = userChatStore();
+  const { currentChatId, prevChatId, setPrevChatId, currentUserId, cursor, setCursor, currentChatName , currentStatus, socket, count, recentMessages, setRecentMessages} = userChatStore();
   const [page, setPage] = useState<number>(0);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -48,7 +48,9 @@ function UserChat() {
   // console.log("current chat id in userchat : ", currentChatId);
   // console.log("prev chat id in userchat : ", prevChatId);
 
-
+  useEffect(()=>{
+    setRecentMessages();
+  }, [currentChatId])
 
 
 
@@ -251,6 +253,7 @@ function UserChat() {
         });
 
         const newMessages = res.data.messages.reverse() || [];
+        console.log(newMessages);
 
         setMessages((prevMessages) => {
           const existingIds = new Set(prevMessages.map(m => m.id));
@@ -301,7 +304,7 @@ function UserChat() {
       const res = await axios.post(`/api/chats/${currentChatId}`, { content: messageInput, senderId: currentUserId });
 
       if(res.data.message === "Message has been sent to the user"){
-        socket?.emit('newMessage', { message: messageInput, chatId: currentChatId });
+        socket?.emit('newMessage', { message: res.data.messageData, chatId: currentChatId });
       }
 
       setMessageInput('');
@@ -380,76 +383,143 @@ function UserChat() {
 
         </div>
       </div>
-      <div
-        ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4"
-        onScroll={handleScroll}
-      >
-        {messages.length > 0 ? (
-          messages.map((message) => {
-            const isCurrentUser = message.senderId === currentUserId;
+ <div
+  ref={scrollContainerRef}
+  className="flex-1 overflow-y-auto p-4 space-y-4"
+  onScroll={handleScroll}
+>
+  {messages.length > 0 ? (
+    <>
+      {/* --- OLD / STORED MESSAGES --- */}
+      {messages.map((message) => {
+        const isCurrentUser = message.senderId === currentUserId;
 
-            return (
-              <div
-                key={message.id}
-                className={`flex items-start gap-3 animate-fadeIn ${isCurrentUser ? 'flex-row-reverse' : ''}`}
-              >
-                {/* Avatar - only show for other users */}
-                {!isCurrentUser && (
-                  <div className="flex-shrink-0">
-                    {message.sender.avatar ? (
-                      <img
-                        src={message.sender.avatar}
-                        alt={message.sender.name}
-                        className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-sm"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center ring-2 ring-white shadow-sm">
-                        <span className="text-white text-sm font-semibold">
-                          {message.sender.name.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    )}
+        return (
+          <div
+            key={message.id}
+            className={`flex items-start gap-3 animate-fadeIn ${isCurrentUser ? 'flex-row-reverse' : ''}`}
+          >
+            {!isCurrentUser && (
+              <div className="flex-shrink-0">
+                {message.sender.avatar ? (
+                  <img
+                    src={message.sender.avatar}
+                    alt={message.sender.name}
+                    className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-sm"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center ring-2 ring-white shadow-sm">
+                    <span className="text-white text-sm font-semibold">
+                      {message.sender.name.charAt(0).toUpperCase()}
+                    </span>
                   </div>
                 )}
+              </div>
+            )}
 
-                {/* Message Content */}
-                <div className={`flex-1 min-w-0 max-w-[70%] ${isCurrentUser ? 'items-end' : 'items-start'}`}>
-                  <div className={`flex items-baseline gap-2 mb-1 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
-                    <span className="font-semibold text-gray-900 text-sm">
-                      {isCurrentUser ? 'You' : message.sender.name}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {new Date(message.createdAt).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
-                  </div>
-                  <div className={`${isCurrentUser
+            <div className={`flex-1 min-w-0 max-w-[70%] ${isCurrentUser ? 'items-end' : 'items-start'}`}>
+              <div className={`flex items-baseline gap-2 mb-1 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
+                <span className="font-semibold text-gray-900 text-sm">
+                  {isCurrentUser ? 'You' : message.sender.name}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {new Date(message.createdAt).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+              </div>
+              <div
+                className={`${
+                  isCurrentUser
                     ? 'bg-blue-600 text-white rounded-lg rounded-tr-none'
                     : 'bg-white text-gray-800 rounded-lg rounded-tl-none border border-gray-200'
-                    } px-4 py-2 shadow-sm`}>
-                    <p className="text-sm break-words leading-relaxed">
-                      {message.content}
-                    </p>
-                  </div>
-                </div>
+                } px-4 py-2 shadow-sm`}
+              >
+                <p className="text-sm break-words leading-relaxed">
+                  {message.content}
+                </p>
               </div>
-            );
-          })
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto bg-gray-200 rounded-full flex items-center justify-center mb-4">
-                <Search className="h-8 w-8 text-gray-400" />
-              </div>
-              <p className="text-gray-500 text-sm">No messages yet</p>
-              <p className="text-gray-400 text-xs mt-1">Start the conversation!</p>
             </div>
           </div>
-        )}
+        );
+      })}
+
+      {/* --- SEPARATOR (optional) --- */}
+      {recentMessages.length > 0 && (
+        <div className="flex justify-center my-4">
+          <div className="text-gray-400 text-xs font-medium bg-gray-100 px-3 py-1 rounded-full">
+            New Messages
+          </div>
+        </div>
+      )}
+
+      {/* --- RECENT / REAL-TIME MESSAGES --- */}
+      {recentMessages.map((message) => {
+        const isCurrentUser = message.senderId === currentUserId;
+
+        return (
+          <div
+            key={`recent-${message.id}`}
+            className={`flex items-start gap-3 animate-fadeIn ${isCurrentUser ? 'flex-row-reverse' : ''}`}
+          >
+            {!isCurrentUser && (
+              <div className="flex-shrink-0">
+                {message.sender.avatar ? (
+                  <img
+                    src={message.sender.avatar}
+                    alt={message.sender.name}
+                    className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-sm"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center ring-2 ring-white shadow-sm">
+                    <span className="text-white text-sm font-semibold">
+                      {message.sender.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className={`flex-1 min-w-0 max-w-[70%] ${isCurrentUser ? 'items-end' : 'items-start'}`}>
+              <div className={`flex items-baseline gap-2 mb-1 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
+                <span className="font-semibold text-gray-900 text-sm">
+                  {isCurrentUser ? 'You' : message.sender.name}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {new Date(message.createdAt).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+              </div>
+              <div
+                className={`${
+                  isCurrentUser
+                    ? 'bg-blue-500 text-white rounded-lg rounded-tr-none'
+                    : 'bg-gray-50 text-gray-800 rounded-lg rounded-tl-none border border-gray-200'
+                } px-4 py-2 shadow-sm`}
+              >
+                <p className="text-sm break-words leading-relaxed">{message.content}</p>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </>
+  ) : (
+    <div className="flex items-center justify-center h-full">
+      <div className="text-center">
+        <div className="w-16 h-16 mx-auto bg-gray-200 rounded-full flex items-center justify-center mb-4">
+          <Search className="h-8 w-8 text-gray-400" />
+        </div>
+        <p className="text-gray-500 text-sm">No messages yet</p>
+        <p className="text-gray-400 text-xs mt-1">Start the conversation!</p>
       </div>
+    </div>
+  )}
+</div>
+
 
       {/* Message Input */}
       <div className="border-t border-gray-200 bg-white p-4 shadow-lg">

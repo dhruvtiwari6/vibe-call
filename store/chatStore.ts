@@ -3,6 +3,7 @@ import axios from 'axios'
 import { io, Socket } from 'socket.io-client'
 import { ScrollAreaThumb } from '@radix-ui/react-scroll-area'
 import { count } from 'console'
+import { Messages } from '@prisma/client'
 
 interface Chats {
     chatId: string,
@@ -29,6 +30,8 @@ interface Message {
 
 
 
+
+
 interface UserChats {
     chats: Chats[]
     message: string
@@ -41,6 +44,7 @@ interface UserChats {
     setCurrentChatName: (name: string) => void
     createSocket: (id: string) => void
     setStatus: (id: string, chatId: string) => void
+    setRecentMessages : ()=> void
     currentStatus: string
     socket?: Socket
     currentChatName?: string
@@ -48,7 +52,7 @@ interface UserChats {
     prevChatId: string
     currentUserId?: string
     cursor?: string | null
-    recentMessages: Array<void>
+    recentMessages: Array<Message>
     count?: Map<string, number>
 
 }
@@ -109,18 +113,18 @@ export const userChatStore = create<UserChats>((set, get) => ({
             const currentChatId = get().currentChatId;
             const count = new Map(get().count); 
 
-            console.log("current chat id : " , chatId);
+            // console.log("current chat id : " , chatId);
+            console.log("prev chat id : ," , get().prevChatId, " and current chat id : ", currentChatId);
 
             if (chatId === currentChatId) {
               if(get().prevChatId !== currentChatId){
                 set({recentMessages: []});
-                get().setPrevChatId(currentChatId || '');
               }
                 set((state) => ({
-                    recentMessages: [...state.recentMessages, data],
+                    recentMessages: [...state.recentMessages, data.data.message],
                 }));
-
-                console.log("New message for current chat received:", data);
+                console.log(get().recentMessages);
+                console.log("New message for current chat received:", data.data.messsage);
             } else {
                 // Increment unread count for that chat
                 const currentCount = count.get(chatId) || 0;
@@ -157,5 +161,6 @@ export const userChatStore = create<UserChats>((set, get) => ({
     setPrevChatId: (id: string) => set({ prevChatId: id }),
     setCurrentUserId: (id: string) => set({ currentUserId: id }),
     setCursor: (id: string | null) => set({ cursor: id }),
-    setCurrentChatName: (name: string) => set({ currentChatName: name })
+    setCurrentChatName: (name: string) => set({ currentChatName: name }),
+    setRecentMessages: () => set({ recentMessages: [] })
 }));
