@@ -3,7 +3,6 @@ import { Server as SocketIOServer } from 'socket.io';
 import next from 'next';
 import { parse } from 'url';
 import { prisma } from './app/lib/db';
-import axios from 'axios';
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
@@ -31,15 +30,14 @@ app.prepare().then(() => {
     io.on('connection', (socket) => {
         const userId = socket.handshake.query.userId;
         onlineUsers.add(userId);
-        io.emit('userStatusUpdate', { userId, status: 'online' });
 
         socket.on('disconnect', () => {
             onlineUsers.delete(userId);
             console.log('user disconnected: ', userId);
         });
 
-        socket.on('IndividualStatus', async (data) => {
-            console.log("Status event received for id: ", data.id);
+        socket.on('Status', async (data) => {
+            // console.log("Status event received for id: ", data.id);
 
             const participants = await prisma.chats.findFirst({
                 where: { id: data.chatId },
@@ -59,22 +57,48 @@ app.prepare().then(() => {
 
                 const onlineCount = groupParticipants?.filter(id => onlineUsers.has(id)).length || 0;
 
-                socket.emit('IndividualStatus', { status: `${onlineCount} online` });
+                socket.emit('Status', { status: `${onlineCount} online` });
 
             } else {
 
                 const otherParticipant = participants?.participants.find(participant => participant.user_id !== data.id)!;
-                console.log("online users set: ", onlineUsers);
+                // console.log("online users set: ", onlineUsers);
 
                 if (onlineUsers.has(otherParticipant.user_id)) {
-                    console.log("User is online: ", otherParticipant.id);
-                    socket.emit('IndividualStatus', { status: 'online' });
+                    // console.log("User is online: ", otherParticipant.id);
+                    socket.emit('Status', { status: 'online' });
                 } else {
-                    console.log("User is offline: ", otherParticipant.id);
-                    socket.emit('IndividualStatus', { status: 'offline' });
+                    // console.log("User is offline: ", otherParticipant.id);
+                    socket.emit('Status', { status: 'offline' });
                 }
             }
         });
+
+        socket.on("joinRoom", (allChats) => {
+            allChats.forEach((chat: any) => {
+                chat.allParticipants.forEach((participantId: string) => {
+                    if (onlineUsers.has(participantId)) {
+                        socket.join(chat.chatId);
+                        console.log(`User ${participantId} joined chat room: ${chat.chatId}`);
+                    }
+                });
+            });
+        });
+
+
+        socket.on("newMessage", (data) => {
+            console.log("Message received from client:", data);
+
+            // Broadcast to everyone in that chat room (including sender)
+            console.log(`Broadcasting new message to chat room ${data.chatId}`);
+            io.to(data.chatId).emit("newMessage", {
+                message: data.message,
+            });
+
+            // Or if you want to send to everyone EXCEPT sender:
+            // socket.broadcast.to(data.chatId).emit("newMessage", data);
+        });
+
     });
 
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/app/lib/db"
 import { auth } from "@/auth";
+import { all } from "axios";
 
 export async function GET(req: NextRequest) {
     try {
@@ -72,6 +73,8 @@ const userChats = await prisma.chatParticipant.findMany({
 const chats = userChats.map(participant => {
     const chat = participant.chat;
     let chatName = chat.ChatName;
+    const allParticipants = chat.participants.map(p => p.user_id)
+
     
     // For direct messages, get the other user's name
     if (!chat.isGroupChat) {
@@ -83,7 +86,8 @@ const chats = userChats.map(participant => {
         id: participant.id, // ChatParticipant id for cursor
         chatId: chat.id,
         chatName: chatName,
-        updatedAt: chat.updatedAt
+        updatedAt: chat.updatedAt,
+        allParticipants: allParticipants
     };
 });
 

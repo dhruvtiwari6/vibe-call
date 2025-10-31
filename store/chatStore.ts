@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import axios from 'axios'
 import { io, Socket } from 'socket.io-client'
+import { ScrollAreaThumb } from '@radix-ui/react-scroll-area'
 
 interface Chats {
     chatId: string,
@@ -20,8 +21,8 @@ interface UserChats {
     setCursor: (id: string | null) => void
     setCurrentChatName: (name: string) => void
     createSocket: (id: string) => void
-    setIndividualStatus: (id: string, chatId: string) => void
-    currentIndividualStatus: string
+    setStatus: (id: string, chatId: string) => void
+    currentStatus: string
     socket?: Socket
     currentChatName?: string
     currentChatId?: string
@@ -39,7 +40,7 @@ export const userChatStore = create<UserChats>((set, get) => ({
     currentUserId: undefined,
     cursor: undefined,
     currentChatName: "",
-    currentIndividualStatus: "offline",
+    currentStatus: "offline",
     socket: undefined,
 
     fetchRecentChats: async (email: string) => {
@@ -51,6 +52,10 @@ export const userChatStore = create<UserChats>((set, get) => ({
                 chats: [...state.chats, ...response.data.chats],
                 isLoading: false
             }));
+
+            const socket = get().socket;
+            socket?.emit('joinRoom', response.data.chats);
+            console.log("all participants: ", response.data.chats);
         } catch (error) {
             set({ isLoading: false });
             throw error;
@@ -74,18 +79,26 @@ export const userChatStore = create<UserChats>((set, get) => ({
             console.log('❌ disconnected from the socket server');
             set({socket: undefined });
         });
+
+        socketInstance.on('newMessage', (data) => {
+          console.log(" sent to the other users : ", data.message)
+      });
+
+     socketInstance.on('joinRoom', (data) => {
+          console.log(" joined the room : ", data)
+      });
     },
 
-    setIndividualStatus: (id: string, chatId: string) => {
+    setStatus: (id: string, chatId: string) => {
         const socket = get().socket;
         console.log("emitting status for id: ", id, " | socket: ", socket);
         
         if (socket) {
-            socket.emit("IndividualStatus", { id, chatId });
+            socket.emit("Status", { id, chatId });
 
-            socket.on("IndividualStatus", (data) => {
+            socket.on("Status", (data) => {
                 console.log("Status update received:", data.status);
-                set({ currentIndividualStatus: data.status });
+                set({ currentStatus: data.status });
             });
         } else {
             console.warn("⚠️ Socket not connected, cannot emit status");

@@ -6,7 +6,7 @@ import axios from "axios";
 
 export default function Friends() {
     const { isSidebarOpen, toggleSidebar, closeSidebar } = useSidebarStore();
-    const { chats, fetchRecentChats, isLoading, setCurrentChatId, currentChatId, setCurrentChatName, currentUserId , setIndividualStatus} = userChatStore();
+    const { chats, fetchRecentChats, isLoading, setCurrentChatId, currentChatId, setCurrentChatName, currentUserId , setStatus, socket} = userChatStore();
 
     // Function to get initials from name
     const getInitials = (name: string) => {
@@ -19,7 +19,7 @@ export default function Friends() {
     };
 const loadChat = async (id: string) => {
     closeSidebar();
-    console.log("fuuu");
+
 
     try {
         const res = await axios.get('/api/chats/chatName', {
@@ -32,7 +32,8 @@ const loadChat = async (id: string) => {
         if (res.status === 200) {
             setCurrentChatName(res.data.chatName);
             setCurrentChatId(id);
-            setIndividualStatus(currentUserId || '', id);
+            // socket?.emit('joinRoom', id);
+            setStatus(currentUserId || '', id);
 
         } else {
             console.warn("Request completed but returned non-200 status:", res.status);

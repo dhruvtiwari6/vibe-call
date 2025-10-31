@@ -27,7 +27,7 @@ interface Message {
 }
 
 function UserChat() {
-  const { currentChatId, prevChatId, setPrevChatId, currentUserId, cursor, setCursor, currentChatName , currentIndividualStatus} = userChatStore();
+  const { currentChatId, prevChatId, setPrevChatId, currentUserId, cursor, setCursor, currentChatName , currentStatus, socket} = userChatStore();
   const [page, setPage] = useState<number>(0);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -290,7 +290,15 @@ function UserChat() {
       e.preventDefault();
       if (!messageInput.trim()) return;
       setIsSending(true);
+
+      console.log(`${socket?.id}`);
+
       const res = await axios.post(`/api/chats/${currentChatId}`, { content: messageInput, senderId: currentUserId });
+
+      if(res.data.message === "Message has been sent to the user"){
+        socket?.emit('newMessage', { message: messageInput, chatId: currentChatId });
+      }
+
       setMessageInput('');
     } catch (error) {
       console.log("error in sending message ", error)
@@ -340,7 +348,7 @@ function UserChat() {
           </div>
           <div>
             <h2 className="text-base font-semibold text-gray-800">{currentChatName}</h2>
-            <p className="text-xs text-gray-500">{currentIndividualStatus}</p>
+            <p className="text-xs text-gray-500">{currentStatus}</p>
           </div>
         </div>
 

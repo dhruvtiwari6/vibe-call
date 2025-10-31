@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db";
 
-export async function GET(req: NextRequest, context: { params: Promise<{id: string }> }) {
+export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     const { id } = await context.params; // This is chatId
     const { searchParams } = new URL(req.url);
     const cursor = searchParams.get("cursor");
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{id: stri
                 }
             }
         })
-        
+
 
         console.log(messages.length)
         return NextResponse.json({
@@ -36,10 +36,10 @@ export async function GET(req: NextRequest, context: { params: Promise<{id: stri
     }
 }
 
-export async function POST(req: NextRequest, context: { params: Promise<{id: string }> }) {
+export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     const { id: recipientId } = await context.params; // This is recipientId
     console.log("recipientId : ", recipientId);
-    
+
     try {
         const { content, senderId } = await req.json();
 
@@ -50,11 +50,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{id: str
         // Your existing POST logic here...
         let chat = await prisma.chats.findFirst({
             where: {
-                id : recipientId
+                id: recipientId
             },
         });
 
-       let actualChatId: string | undefined = chat?.id;
+        let actualChatId: string | undefined = chat?.id;
 
         if (!chat) {  // chatId is actually recipient user ID, create new chat
             console.log("there does not eexist a chat betweeen these users")
@@ -98,6 +98,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{id: str
                 }
             });
 
+
             return NextResponse.json({
                 message: "Message has been sent to the user",
                 chatId: actualChatId,
@@ -108,7 +109,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{id: str
             console.error("Failed to send message:", createMessageError);
             return NextResponse.json({ error: "Failed to send message" }, { status: 500 });
         }
-        
+
     } catch (error) {
         console.error("Error in POST request:", error);
         return NextResponse.json({ error: "Internal server error" }, { status: 500 });

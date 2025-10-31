@@ -40,7 +40,6 @@ export default function Chats() {
         setCurrentChatName, 
         currentChatName, 
         createSocket ,
-        setIndividualStatus
 
     } = userChatStore();
     const { data: session, status } = useSession();
