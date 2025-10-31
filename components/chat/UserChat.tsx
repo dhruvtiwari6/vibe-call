@@ -27,7 +27,7 @@ interface Message {
 }
 
 function UserChat() {
-  const { currentChatId, prevChatId, setPrevChatId, currentUserId, cursor, setCursor, currentChatName , currentStatus, socket} = userChatStore();
+  const { currentChatId, prevChatId, setPrevChatId, currentUserId, cursor, setCursor, currentChatName , currentStatus, socket, count, recentMessages} = userChatStore();
   const [page, setPage] = useState<number>(0);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -49,6 +49,9 @@ function UserChat() {
   // console.log("prev chat id in userchat : ", prevChatId);
 
 
+
+
+
   useEffect(() => {
     const fetchMembers = async () => {
       if (showModal && currentChatId) {
@@ -66,6 +69,8 @@ function UserChat() {
     };
     fetchMembers();
   }, [showModal, currentChatId]);
+
+  
 
 
   const handleAddMember = async (userId: string) => {

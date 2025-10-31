@@ -92,7 +92,7 @@ app.prepare().then(() => {
             // Broadcast to everyone in that chat room (including sender)
             console.log(`Broadcasting new message to chat room ${data.chatId}`);
             io.to(data.chatId).emit("newMessage", {
-                message: data.message,
+                data,
             });
 
             // Or if you want to send to everyone EXCEPT sender:

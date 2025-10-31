@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import axios from 'axios'
 import { io, Socket } from 'socket.io-client'
 import { ScrollAreaThumb } from '@radix-ui/react-scroll-area'
+import { count } from 'console'
 
 interface Chats {
     chatId: string,
@@ -9,6 +10,24 @@ interface Chats {
     chatName: string,
     updatedAt: Date
 }
+
+
+interface User {
+    id: string;
+    name: string;
+    avatar: string | null;
+    role: string
+}
+
+interface Message {
+    id: string;
+    content: string;
+    createdAt: string;
+    senderId: string;
+    sender: User;
+}
+
+
 
 interface UserChats {
     chats: Chats[]
@@ -29,6 +48,9 @@ interface UserChats {
     prevChatId: string
     currentUserId?: string
     cursor?: string | null
+    recentMessages: Array<void>
+    count?: Map<string, number>
+
 }
 
 export const userChatStore = create<UserChats>((set, get) => ({
@@ -42,6 +64,8 @@ export const userChatStore = create<UserChats>((set, get) => ({
     currentChatName: "",
     currentStatus: "offline",
     socket: undefined,
+    recentMessages: [],
+    count: undefined,
 
     fetchRecentChats: async (email: string) => {
         set({ isLoading: true });
@@ -72,27 +96,51 @@ export const userChatStore = create<UserChats>((set, get) => ({
 
         socketInstance.on('connect', () => {
             console.log('✅ connected to the socket server');
-            set({socket: socketInstance });
+            set({ socket: socketInstance });
         });
 
         socketInstance.on('disconnect', () => {
             console.log('❌ disconnected from the socket server');
-            set({socket: undefined });
+            set({ socket: undefined });
         });
 
         socketInstance.on('newMessage', (data) => {
-          console.log(" sent to the other users : ", data.message)
-      });
+            const chatId = data.data.chatId;
+            const currentChatId = get().currentChatId;
+            const count = new Map(get().count); 
 
-     socketInstance.on('joinRoom', (data) => {
-          console.log(" joined the room : ", data)
-      });
+            console.log("current chat id : " , chatId);
+
+            if (chatId === currentChatId) {
+              if(get().prevChatId !== currentChatId){
+                set({recentMessages: []});
+                get().setPrevChatId(currentChatId || '');
+              }
+                set((state) => ({
+                    recentMessages: [...state.recentMessages, data],
+                }));
+
+                console.log("New message for current chat received:", data);
+            } else {
+                // Increment unread count for that chat
+                const currentCount = count.get(chatId) || 0;
+                count.set(chatId, currentCount + 1);
+                set({ count }); // update Zustand store
+
+                console.log("New message for other chat received. Updated count:", count.get(chatId));
+            }
+        });
+
+
+        socketInstance.on('joinRoom', (data) => {
+            console.log(" joined the room : ", data)
+        });
     },
 
     setStatus: (id: string, chatId: string) => {
         const socket = get().socket;
         console.log("emitting status for id: ", id, " | socket: ", socket);
-        
+
         if (socket) {
             socket.emit("Status", { id, chatId });
 

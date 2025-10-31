@@ -6,7 +6,7 @@ import axios from "axios";
 
 export default function Friends() {
     const { isSidebarOpen, toggleSidebar, closeSidebar } = useSidebarStore();
-    const { chats, fetchRecentChats, isLoading, setCurrentChatId, currentChatId, setCurrentChatName, currentUserId , setStatus, socket} = userChatStore();
+    const { chats, fetchRecentChats, isLoading, setCurrentChatId, currentChatId, setCurrentChatName, currentUserId, setStatus, socket, count } = userChatStore();
 
     // Function to get initials from name
     const getInitials = (name: string) => {
@@ -17,32 +17,35 @@ export default function Friends() {
             .toUpperCase()
             .slice(0, 2);
     };
-const loadChat = async (id: string) => {
-    closeSidebar();
 
 
-    try {
-        const res = await axios.get('/api/chats/chatName', {
-            params: {
-                chatId: id,
-                userId: currentUserId
+    const loadChat = async (id: string) => {
+        closeSidebar();
+        console.log("Loading chat with ID: ", id);
+        {count && count.delete(id)}
+
+
+        try {
+            const res = await axios.get('/api/chats/chatName', {
+                params: {
+                    chatId: id,
+                    userId: currentUserId
+                }
+            });
+
+            if (res.status === 200) {
+                setCurrentChatName(res.data.chatName);
+                setCurrentChatId(id);
+                setStatus(currentUserId || '', id);
+
+            } else {
+                console.warn("Request completed but returned non-200 status:", res.status);
             }
-        });
+        } catch (error: any) {
+            console.error("Error in request setup:", error);
 
-        if (res.status === 200) {
-            setCurrentChatName(res.data.chatName);
-            setCurrentChatId(id);
-            // socket?.emit('joinRoom', id);
-            setStatus(currentUserId || '', id);
-
-        } else {
-            console.warn("Request completed but returned non-200 status:", res.status);
         }
-    } catch (error: any) {
-        console.error("Error in request setup:", error);
-        
-    }
-};
+    };
 
 
     return (
@@ -77,9 +80,18 @@ const loadChat = async (id: string) => {
                                             }) : ''}
                                         </span>
                                     </div>
-                                    <p className="text-xs sm:text-sm text-gray-600 truncate">
-                                        {'No messages yet'}
-                                    </p>
+                                    <div className="flex justify-between items-center">
+                                        <p className="text-xs sm:text-sm text-gray-600 truncate">
+                                            No messages yet
+                                        </p>
+
+                                        {count && count.get(chat.chatId) && count.get(chat.chatId)! > 0 && (
+                                            <span className="ml-2 bg-red-500 text-white text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full min-w-[18px] text-center">
+                                                {count.get(chat.chatId)}
+                                            </span>
+                                        )}
+                                    </div>
+
                                 </div>
                             </div>
                         </div>
