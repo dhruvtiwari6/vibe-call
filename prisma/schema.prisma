@@ -40,7 +40,6 @@ model User {
   emailVerified    DateTime?
   password         String?
   avatar           String?
-  status           String?
   token            String?
   username         String?
   image            String?

@@ -86,6 +86,7 @@ const authOptions: NextAuthConfig = {
                             return null;
                         }
 
+
                         return {
                             id: user.id,
                             name: user.name,
@@ -143,6 +144,8 @@ const authOptions: NextAuthConfig = {
                     token.id = dbUser?.id || ""
                 }
                 token.email = user.email;
+                token.image = user.image;
+
             }
             return token;
         },
@@ -151,6 +154,7 @@ const authOptions: NextAuthConfig = {
             if (session.user && token.id) {
                 session.user.id = token.id as string;
                 session.user.email = token.email as string; 
+                session.user.image = token.image as string?? "";
             }
             return session
         }

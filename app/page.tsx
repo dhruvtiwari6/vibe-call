@@ -6,6 +6,10 @@ export default function SignIn() {
 
   if (status === "loading") return <p>Loading...</p>
 
+  if(status === "authenticated" ) {
+    console.log("Session user image:", session?.user?.image);
+  }
+
   if (session) {
     return (
       <div>

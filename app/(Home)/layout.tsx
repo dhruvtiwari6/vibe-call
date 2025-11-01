@@ -1,4 +1,5 @@
 import { SessionProvider } from "next-auth/react";
+import ProfileNavbar from "@/components/user/ProfileNavbar";
 
 export default function HomePage({
   children,
@@ -7,7 +8,7 @@ export default function HomePage({
 }>) {
   return (
         <div className="flex flex-col h-screen"> 
-            <div>Navbar for profile menu</div>
+            <ProfileNavbar />
             <SessionProvider>
               <div className="flex-1"> 
                 {children}

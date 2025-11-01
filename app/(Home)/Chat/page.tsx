@@ -169,7 +169,6 @@ export default function Chats() {
                             </div>
                         ) : (
                             <>
-                                {/* Groups Section */}
                                 {searchGroups.length > 0 && (
                                     <div className="mb-4">
                                         <h3 className="text-xs font-semibold text-gray-500 uppercase px-2 mb-2">
