@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { Search, Send, Loader2, X, UserPlus, UserMinus, Shield, LogOut } from 'lucide-react'
 import { userChatStore } from '@/store/chatStore';
-import axios from 'axios';
-import { queryObjects } from 'v8';
+import axios from 'axios'
+import SettingModal from '../modals/SettingModal';
+import AddMemberModal from '../modals/AddMemberModal';
 
 interface User {
   id: string;
@@ -27,7 +28,7 @@ interface Message {
 }
 
 function UserChat() {
-  const { currentChatId, prevChatId, setPrevChatId, currentUserId, cursor, setCursor, currentChatName , currentStatus, socket, count, recentMessages, setRecentMessages} = userChatStore();
+  const { currentChatId, prevChatId, setPrevChatId, currentUserId, cursor, setCursor, currentChatName, currentStatus, socket, count, recentMessages, setRecentMessages } = userChatStore();
   const [page, setPage] = useState<number>(0);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -41,18 +42,12 @@ function UserChat() {
   const [searchUsers, setSearchUsers] = useState<SearchUser[]>([])
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [addingMemberId, setAddingMemberId] = useState<string | null>(null);
 
 
 
-  // console.log("current chat id in userchat : ", currentChatId);
-  // console.log("prev chat id in userchat : ", prevChatId);
-
-  useEffect(()=>{
+  useEffect(() => {
     setRecentMessages();
   }, [currentChatId])
-
-
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -71,86 +66,6 @@ function UserChat() {
     };
     fetchMembers();
   }, [showModal, currentChatId]);
-
-  
-
-
-  const handleAddMember = async (userId: string) => {
-    try {
-      setAddingMemberId(userId);
-      const res = await axios.post(`/api/chats/Add_Remove?method=add`, {
-        memberId: userId,
-        chatId: currentChatId,
-        operation_perf_id: currentUserId
-      });
-
-      if (res.data.message === "new member added successfully") {
-        const userToAdd = searchUsers.find(u => u.id === userId);
-
-        if (userToAdd) {
-          setMembers(prev => [...prev, {
-            id: userToAdd.id,
-            name: userToAdd.name,
-            avatar: userToAdd.avatar,
-            role: "member" 
-          }]);
-        }
-
-        alert('Member added successfully!');
-      }
-    } catch (error: any) {
-      console.error("Error adding member:", error);
-      alert(error.response?.data?.message || "Failed to add member. Please try again.");
-    } finally {
-      setAddingMemberId(null); // ✅ hide loader
-    }
-  };
-
-
-  const handleRemoveMember = async (memberId: string, chatId: string, operation_perf_id: string | undefined) => {
-    try {
-      const res = await axios.post(`/api/chats/Add_Remove?method=remove`, {
-        memberId, chatId, operation_perf_id
-      })
-
-      if (res.data.message === "Member removed successfully") {
-        setMembers(prev => prev.filter(m => m.id !== memberId));
-        alert('Member removed');
-      } else if (res.data.message === "Insufficient permissions to remove member") {
-        alert("don't have suffficient permission");
-      }
-    } catch (error: any) {
-      console.error("Error removing member:", error);
-      alert(error.response?.data?.message || "Failed to remove member. Please try again.");
-    }
-  };
-
-  const handleUpgradeRole = async (memberId: string, chatId: string, operation_perf_id: string | undefined) => {
-    try {
-      const res = await axios.post(`/api/chats/groupRoleUpdation?method=update`, {
-        memberId, chatId, operation_perf_id
-      })
-
-      if (res.data.message === "Member promoted to admin") {
-        setMembers(prev => prev.map(m =>
-          m.id === memberId ? { ...m, role: "admin" } : m
-        ));
-        alert(`Role updated to admin`);
-      } else if (res.data.message === "You cannot promote this member") {
-        alert(`yDon't have sufficient authority`);
-      }
-    } catch (error: any) {
-      console.error("Error upgrading member role:", error);
-      alert(error.response?.data?.message || "Failed to update role. Please try again.");
-    }
-  };
-
-  const handleLeaveGroup = () => {
-    if (confirm("Leave this group?")) {
-      setShowModal(false);
-      alert('You left the group');
-    }
-  };
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -303,7 +218,7 @@ function UserChat() {
 
       const res = await axios.post(`/api/chats/${currentChatId}`, { content: messageInput, senderId: currentUserId });
 
-      if(res.data.message === "Message has been sent to the user"){
+      if (res.data.message === "Message has been sent to the user") {
         socket?.emit('newMessage', { message: res.data.messageData, chatId: currentChatId });
       }
 
@@ -383,142 +298,140 @@ function UserChat() {
 
         </div>
       </div>
- <div
-  ref={scrollContainerRef}
-  className="flex-1 overflow-y-auto p-4 space-y-4"
-  onScroll={handleScroll}
->
-  {messages.length > 0 ? (
-    <>
-      {/* --- OLD / STORED MESSAGES --- */}
-      {messages.map((message) => {
-        const isCurrentUser = message.senderId === currentUserId;
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+        onScroll={handleScroll}
+      >
+        {messages.length > 0 ? (
+          <>
+            {/* --- OLD / STORED MESSAGES --- */}
+            {messages.map((message) => {
+              const isCurrentUser = message.senderId === currentUserId;
 
-        return (
-          <div
-            key={message.id}
-            className={`flex items-start gap-3 animate-fadeIn ${isCurrentUser ? 'flex-row-reverse' : ''}`}
-          >
-            {!isCurrentUser && (
-              <div className="flex-shrink-0">
-                {message.sender.avatar ? (
-                  <img
-                    src={message.sender.avatar}
-                    alt={message.sender.name}
-                    className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-sm"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center ring-2 ring-white shadow-sm">
-                    <span className="text-white text-sm font-semibold">
-                      {message.sender.name.charAt(0).toUpperCase()}
-                    </span>
+              return (
+                <div
+                  key={message.id}
+                  className={`flex items-start gap-3 animate-fadeIn ${isCurrentUser ? 'flex-row-reverse' : ''}`}
+                >
+                  {!isCurrentUser && (
+                    <div className="flex-shrink-0">
+                      {message.sender.avatar ? (
+                        <img
+                          src={message.sender.avatar}
+                          alt={message.sender.name}
+                          className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center ring-2 ring-white shadow-sm">
+                          <span className="text-white text-sm font-semibold">
+                            {message.sender.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className={`flex-1 min-w-0 max-w-[70%] ${isCurrentUser ? 'items-end' : 'items-start'}`}>
+                    <div className={`flex items-baseline gap-2 mb-1 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
+                      <span className="font-semibold text-gray-900 text-sm">
+                        {isCurrentUser ? 'You' : message.sender.name}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(message.createdAt).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                    <div
+                      className={`${isCurrentUser
+                          ? 'bg-blue-600 text-white rounded-lg rounded-tr-none'
+                          : 'bg-white text-gray-800 rounded-lg rounded-tl-none border border-gray-200'
+                        } px-4 py-2 shadow-sm`}
+                    >
+                      <p className="text-sm break-words leading-relaxed">
+                        {message.content}
+                      </p>
+                    </div>
                   </div>
-                )}
+                </div>
+              );
+            })}
+
+            {/* --- SEPARATOR (optional) --- */}
+            {recentMessages.length > 0 && (
+              <div className="flex justify-center my-4">
+                <div className="text-gray-400 text-xs font-medium bg-gray-100 px-3 py-1 rounded-full">
+                  New Messages
+                </div>
               </div>
             )}
 
-            <div className={`flex-1 min-w-0 max-w-[70%] ${isCurrentUser ? 'items-end' : 'items-start'}`}>
-              <div className={`flex items-baseline gap-2 mb-1 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
-                <span className="font-semibold text-gray-900 text-sm">
-                  {isCurrentUser ? 'You' : message.sender.name}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {new Date(message.createdAt).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </span>
-              </div>
-              <div
-                className={`${
-                  isCurrentUser
-                    ? 'bg-blue-600 text-white rounded-lg rounded-tr-none'
-                    : 'bg-white text-gray-800 rounded-lg rounded-tl-none border border-gray-200'
-                } px-4 py-2 shadow-sm`}
-              >
-                <p className="text-sm break-words leading-relaxed">
-                  {message.content}
-                </p>
-              </div>
-            </div>
-          </div>
-        );
-      })}
+            {/* --- RECENT / REAL-TIME MESSAGES --- */}
+            {recentMessages.map((message) => {
+              const isCurrentUser = message.senderId === currentUserId;
 
-      {/* --- SEPARATOR (optional) --- */}
-      {recentMessages.length > 0 && (
-        <div className="flex justify-center my-4">
-          <div className="text-gray-400 text-xs font-medium bg-gray-100 px-3 py-1 rounded-full">
-            New Messages
-          </div>
-        </div>
-      )}
+              return (
+                <div
+                  key={`recent-${message.id}`}
+                  className={`flex items-start gap-3 animate-fadeIn ${isCurrentUser ? 'flex-row-reverse' : ''}`}
+                >
+                  {!isCurrentUser && (
+                    <div className="flex-shrink-0">
+                      {message.sender.avatar ? (
+                        <img
+                          src={message.sender.avatar}
+                          alt={message.sender.name}
+                          className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center ring-2 ring-white shadow-sm">
+                          <span className="text-white text-sm font-semibold">
+                            {message.sender.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-      {/* --- RECENT / REAL-TIME MESSAGES --- */}
-      {recentMessages.map((message) => {
-        const isCurrentUser = message.senderId === currentUserId;
-
-        return (
-          <div
-            key={`recent-${message.id}`}
-            className={`flex items-start gap-3 animate-fadeIn ${isCurrentUser ? 'flex-row-reverse' : ''}`}
-          >
-            {!isCurrentUser && (
-              <div className="flex-shrink-0">
-                {message.sender.avatar ? (
-                  <img
-                    src={message.sender.avatar}
-                    alt={message.sender.name}
-                    className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-sm"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center ring-2 ring-white shadow-sm">
-                    <span className="text-white text-sm font-semibold">
-                      {message.sender.name.charAt(0).toUpperCase()}
-                    </span>
+                  <div className={`flex-1 min-w-0 max-w-[70%] ${isCurrentUser ? 'items-end' : 'items-start'}`}>
+                    <div className={`flex items-baseline gap-2 mb-1 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
+                      <span className="font-semibold text-gray-900 text-sm">
+                        {isCurrentUser ? 'You' : message.sender.name}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(message.createdAt).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                    <div
+                      className={`${isCurrentUser
+                          ? 'bg-blue-500 text-white rounded-lg rounded-tr-none'
+                          : 'bg-gray-50 text-gray-800 rounded-lg rounded-tl-none border border-gray-200'
+                        } px-4 py-2 shadow-sm`}
+                    >
+                      <p className="text-sm break-words leading-relaxed">{message.content}</p>
+                    </div>
                   </div>
-                )}
+                </div>
+              );
+            })}
+          </>
+        ) : (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto bg-gray-200 rounded-full flex items-center justify-center mb-4">
+                <Search className="h-8 w-8 text-gray-400" />
               </div>
-            )}
-
-            <div className={`flex-1 min-w-0 max-w-[70%] ${isCurrentUser ? 'items-end' : 'items-start'}`}>
-              <div className={`flex items-baseline gap-2 mb-1 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
-                <span className="font-semibold text-gray-900 text-sm">
-                  {isCurrentUser ? 'You' : message.sender.name}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {new Date(message.createdAt).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </span>
-              </div>
-              <div
-                className={`${
-                  isCurrentUser
-                    ? 'bg-blue-500 text-white rounded-lg rounded-tr-none'
-                    : 'bg-gray-50 text-gray-800 rounded-lg rounded-tl-none border border-gray-200'
-                } px-4 py-2 shadow-sm`}
-              >
-                <p className="text-sm break-words leading-relaxed">{message.content}</p>
-              </div>
+              <p className="text-gray-500 text-sm">No messages yet</p>
+              <p className="text-gray-400 text-xs mt-1">Start the conversation!</p>
             </div>
           </div>
-        );
-      })}
-    </>
-  ) : (
-    <div className="flex items-center justify-center h-full">
-      <div className="text-center">
-        <div className="w-16 h-16 mx-auto bg-gray-200 rounded-full flex items-center justify-center mb-4">
-          <Search className="h-8 w-8 text-gray-400" />
-        </div>
-        <p className="text-gray-500 text-sm">No messages yet</p>
-        <p className="text-gray-400 text-xs mt-1">Start the conversation!</p>
+        )}
       </div>
-    </div>
-  )}
-</div>
 
 
       {/* Message Input */}
@@ -555,232 +468,24 @@ function UserChat() {
 
       {/* Settings Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white w-full max-w-md rounded-lg shadow-xl">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-lg font-semibold text-gray-900">Chat Settings</h2>
-              <button
-                onClick={() => setShowModal(false)}
-                className="p-1 hover:bg-gray-100 rounded-full transition"
-              >
-                <X className="h-5 w-5 text-gray-500" />
-              </button>
-            </div>
+        <SettingModal loading={loading} setShowModal={setShowModal} setShowAddMemberModal={setShowAddMemberModal}
+          members={members} currentUserId={currentUserId ?? ""} currentChatId={currentChatId} setMembers={setMembers}
+        />
 
-            {loading ? (
-              <div className="flex justify-center items-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-              </div>
-            ) : (
-              <div className="p-4 space-y-4">
-                {/* Members List */}
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-medium text-gray-700">Members ({members.length})</h3>
-                    <button
-                      onClick={() => setShowAddMemberModal(true)}
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                    >
-                      + Add
-                    </button>
-                  </div>
-
-                  <div className="space-y-1 max-h-64 overflow-y-auto">
-                    {members.map((member) => (
-                      <div
-                        key={member.id}
-                        className="flex items-center justify-between p-2 rounded hover:bg-gray-50"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
-                            {member.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">
-                              {member.id === currentUserId ? 'You' : member.name}
-                            </p>
-                            <p className="text-xs text-gray-500">{member.role}</p>
-                          </div>
-                        </div>
-
-                        {member.id !== currentUserId && (
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => handleUpgradeRole(member.id, currentChatId, currentUserId)}
-                              className="p-1.5 hover:bg-gray-200 rounded"
-                              title="Change Role"
-                            >
-                              <Shield className="h-4 w-4 text-gray-600" />
-                            </button>
-                            <button
-                              onClick={() => handleRemoveMember(member.id, currentChatId, currentUserId)}
-                              className="p-1.5 hover:bg-gray-200 rounded"
-                              title="Remove"
-                            >
-                              <UserMinus className="h-4 w-4 text-gray-600" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="pt-2 border-t space-y-2">
-                  <button
-                    onClick={() => setShowAddMemberModal(true)}
-                    className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded transition"
-                  >
-                    <UserPlus className="h-5 w-5 text-gray-600" />
-                    <span className="text-sm font-medium text-gray-900">Add Members</span>
-                  </button>
-
-                  <button
-                    onClick={() => { }}
-                    className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 rounded transition"
-                  >
-                    <Shield className="h-5 w-5 text-gray-600" />
-                    <span className="text-sm font-medium text-gray-900">Manage Roles</span>
-                  </button>
-
-                  <button
-                    onClick={handleLeaveGroup}
-                    className="w-full flex items-center gap-3 p-3 hover:bg-red-50 rounded transition"
-                  >
-                    <LogOut className="h-5 w-5 text-red-600" />
-                    <span className="text-sm font-medium text-red-600">Leave Chat</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
       )}
 
       {/* Add Member Modal */}
       {showAddMemberModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white w-full max-w-md rounded-lg shadow-xl">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-lg font-semibold text-gray-900">Add Member</h2>
-              <button
-                onClick={() => {
-                  setShowAddMemberModal(false);
-                  setSearchQuery("");
-                  setSearchUsers([]);
-                }}
-                className="p-1 hover:bg-gray-100 rounded-full transition"
-              >
-                <X className="h-5 w-5 text-gray-500" />
-              </button>
-            </div>
-
-            <div className="p-4">
-              {/* Search Input */}
-              <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search users by name or email..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                />
-              </div>
-
-              {/* Search Results */}
-              <div className="max-h-96 overflow-y-auto">
-                {searchLoading ? (
-                  <div className="flex justify-center items-center py-8">
-                    <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                  </div>
-                ) : searchQuery.trim() === "" ? (
-                  <div className="text-center py-8 text-gray-500 text-sm">
-                    <Search className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                    <p>Start typing to search for users</p>
-                  </div>
-                ) : searchUsers.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500 text-sm">
-                    <p>No users found</p>
-                  </div>
-                ) : (
-                  <div className="px-2">
-                    <h3 className="text-xs font-semibold text-gray-500 uppercase px-2 mb-2">
-                      Users
-                    </h3>
-                    <ul className="space-y-1">
-                      {searchUsers.map((user) => {
-                        const isAlreadyMember = members.some(m => m.id === user.id);
-
-                        return (
-                          <li
-                            key={user.id}
-                            className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50"
-                          >
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                              {user.avatar ? (
-                                <img
-                                  src={user.avatar}
-                                  alt={user.name}
-                                  className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                                />
-                              ) : (
-                                <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
-                                  <span className="text-xs font-semibold text-gray-700">
-                                    {user.name
-                                      ? user.name
-                                        .split(' ')
-                                        .map((n: string) => n[0])
-                                        .join('')
-                                        .toUpperCase()
-                                        .slice(0, 2)
-                                      : '?'}
-                                  </span>
-                                </div>
-                              )}
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-medium text-gray-900 truncate">
-                                  {user.name}
-                                </p>
-                                <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                              </div>
-                            </div>
-
-                            {isAlreadyMember ? (
-                              <span className="text-xs text-gray-500 ml-2 flex-shrink-0">Already a member</span>
-                            ) : (
-                              <button
-                                onClick={() => handleAddMember(user.id)}
-                                disabled={addingMemberId === user.id}
-                                className={`ml-2 px-3 py-1.5 rounded text-sm flex items-center justify-center gap-2 flex-shrink-0 
-    ${addingMemberId === user.id
-                                    ? 'bg-blue-400 cursor-not-allowed'
-                                    : 'bg-blue-600 hover:bg-blue-700 text-white transition'}`}
-                              >
-                                {addingMemberId === user.id ? (
-                                  <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    <span>Adding...</span>
-                                  </>
-                                ) : (
-                                  'Add'
-                                )}
-                              </button>
-
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+        <AddMemberModal
+          searchLoading={searchLoading}
+          searchQuery={searchQuery}
+          setMembers={setMembers}
+          setSearchQuery={setSearchQuery}
+          setSearchUsers={setSearchUsers}
+          searchUsers={searchUsers}
+          setShowAddMemberModal={setShowAddMemberModal}
+          members={members}
+        />
       )}
     </div>
   );
