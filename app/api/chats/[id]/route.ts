@@ -36,84 +36,164 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     }
 }
 
-export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-    const { id: recipientId } = await context.params; // This is recipientId
-    console.log("recipientId : ", recipientId);
+// export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+//     const { id: recipientId } = await context.params; // This is recipientId
+//     console.log("recipientId : ", recipientId);
 
-    try {
-        const { content, senderId } = await req.json();
+//     try {
+//         const { content, senderId } = await req.json();
 
-        if (!senderId || !content) {
-            return NextResponse.json({ error: "Missing Fields" }, { status: 400 });
-        }
+//         if (!senderId || !content) {
+//             return NextResponse.json({ error: "Missing Fields" }, { status: 400 });
+//         }
 
-        // Your existing POST logic here...
-        let chat = await prisma.chats.findFirst({
-            where: {
-                id: recipientId
-            },
-        });
+//         // Your existing POST logic here...
+//         let chat = await prisma.chats.findFirst({
+//             where: {
+//                 id: recipientId
+//             },
+//         });
 
-        let actualChatId: string | undefined = chat?.id;
+//         let actualChatId: string | undefined = chat?.id;
 
-        if (!chat) {  // chatId is actually recipient user ID, create new chat
-            console.log("there does not eexist a chat betweeen these users")
-            try {
-                const newChat = await prisma.chats.create({
-                    data: {
-                        isGroupChat: false,
-                        participants: {
-                            create: [
-                                { user: { connect: { id: recipientId } } }, // recipient user ID
-                                { user: { connect: { id: senderId } } }
-                            ]
-                        },
-                    },
-                });
+//         if (!chat) {  // chatId is actually recipient user ID, create new chat
+//             console.log("there does not eexist a chat betweeen these users")
+//             try {
+//                 const newChat = await prisma.chats.create({
+//                     data: {
+//                         isGroupChat: false,
+//                         participants: {
+//                             create: [
+//                                 { user: { connect: { id: recipientId } } }, // recipient user ID
+//                                 { user: { connect: { id: senderId } } }
+//                             ]
+//                         },
+//                     },
+//                 });
 
-                actualChatId = newChat.id;
+//                 actualChatId = newChat.id;
 
-            } catch (createChatError) {
-                console.error("Failed to create chat:", createChatError);
-                return NextResponse.json({ error: "Failed to create chat" }, { status: 500 });
-            }
-        }
+//             } catch (createChatError) {
+//                 console.error("Failed to create chat:", createChatError);
+//                 return NextResponse.json({ error: "Failed to create chat" }, { status: 500 });
+//             }
+//         }
 
-        if (!actualChatId) {
-            return NextResponse.json({ error: "Chat ID could not be determined" }, { status: 500 });
-        }
+//         if (!actualChatId) {
+//             return NextResponse.json({ error: "Chat ID could not be determined" }, { status: 500 });
+//         }
 
-        // Create the message
-        try {
-            const message = await prisma.messages.create({
-                data: {
-                    chat: { connect: { id: actualChatId } },
-                    sender: { connect: { id: senderId } },
-                    content,
-                },
-                include: {
-                    sender: {
-                        select: { id: true, name: true, avatar: true }
-                    }
-                }
-            });
+//         // Create the message
+//         try {
+//             const message = await prisma.messages.create({
+//                 data: {
+//                     chat: { connect: { id: actualChatId } },
+//                     sender: { connect: { id: senderId } },
+//                     content,
+//                 },
+//                 include: {
+//                     sender: {
+//                         select: { id: true, name: true, avatar: true }
+//                     }
+//                 }
+//             });
 
             
 
 
-            return NextResponse.json({
-                message: "Message has been sent to the user",
-                chatId: actualChatId,
-                messageData: message
-            }, { status: 200 });
+//             return NextResponse.json({
+//                 message: "Message has been sent to the user",
+//                 chatId: actualChatId,
+//                 messageData: message
+//             }, { status: 200 });
 
-        } catch (createMessageError) {
-            console.error("Failed to send message:", createMessageError);
-            return NextResponse.json({ error: "Failed to send message" }, { status: 500 });
-        }
+//         } catch (createMessageError) {
+//             console.error("Failed to send message:", createMessageError);
+//             return NextResponse.json({ error: "Failed to send message" }, { status: 500 });
+//         }
 
-    } catch (error) {
-        console.error("Error in POST request:", error);
-        return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+//     } catch (error) {
+//         console.error("Error in POST request:", error);
+//         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+//     }
+// }
+
+export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id: recipientId } = await context.params;
+  console.log("recipientId : ", recipientId);
+
+  try {
+    const { content, senderId, fileUrl } = await req.json();
+
+    console.log("content:", content);
+    console.log("fileUrl:", fileUrl);
+
+    // Validation: senderId required AND either content OR fileUrl (not both)
+    if (!senderId || (!content && !fileUrl)) {
+        console.log("kjaaa");
+      return NextResponse.json({ error: "Missing Fields" }, { status: 400 });
     }
+
+
+    if (content && fileUrl) {
+      return NextResponse.json({ error: "Cannot send text and file in the same message" }, { status: 400 });
+    }
+
+    // Find existing chat
+    let chat = await prisma.chats.findFirst({
+      where: { id: recipientId },
+    });
+
+    let actualChatId: string | undefined = chat?.id;
+
+    if (!chat) {
+      // Create new chat if it doesn't exist
+      const newChat = await prisma.chats.create({
+        data: {
+          isGroupChat: false,
+          participants: {
+            create: [
+              { user: { connect: { id: recipientId } } },
+              { user: { connect: { id: senderId } } },
+            ],
+          },
+        },
+      });
+
+      actualChatId = newChat.id;
+    }
+
+    if (!actualChatId) {
+      return NextResponse.json({ error: "Chat ID could not be determined" }, { status: 500 });
+    }
+
+
+    console.log("you reached here");
+
+    // Create the message
+    const message = await prisma.messages.create({
+      data: {
+        chat: { connect: { id: actualChatId } },
+        sender: { connect: { id: senderId } },
+        content: content || "",
+        fileUrl: fileUrl || null,
+      },
+      include: {
+        sender: { select: { id: true, name: true, avatar: true } },
+      },
+    });
+
+    return NextResponse.json(
+      {
+        message: "Message has been sent to the user",
+        chatId: actualChatId,
+        messageData: message,
+      },
+      { status: 200 }
+    );
+
+  } catch (error) {
+    console.error("Error in POST request:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }

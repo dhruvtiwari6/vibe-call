@@ -64,9 +64,12 @@ const ProfileNavbar = () => {
             const res = await axios.post("/api/image_upload", formData);
 
             if (res.data.message === "image uploaded") {
-                await axios.put('/api/image_upload/set_avatar', { image_public_url: res.data.url, user_id: currentUserId });
+                const response = await axios.put('/api/image_upload/set_avatar', { image_public_url: res.data.url, user_id: currentUserId });
+
+                if(response.data.message === "Avatar updated successfully") {
+                    setAvatar(res.data.url);
+                }
             }
-            setAvatar(res.data.url);
         } catch (err) {
             console.error("Upload failed:", err);
             alert("Failed to upload avatar");

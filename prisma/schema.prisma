@@ -65,6 +65,7 @@ model Messages {
   id        String   @id @default(cuid())
   sender_id String
   content   String
+  fileUrl   String?
   chatId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

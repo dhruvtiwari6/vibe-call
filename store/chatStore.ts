@@ -26,6 +26,8 @@ interface Message {
     createdAt: string;
     senderId: string;
     sender: User;
+    fileUrl?: string | null;
+
 }
 
 

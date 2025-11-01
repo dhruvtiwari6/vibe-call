@@ -25,6 +25,7 @@ interface Message {
   createdAt: string;
   senderId: string;
   sender: User;
+  fileUrl?: string | null;
 }
 
 function UserChat() {
@@ -42,6 +43,9 @@ function UserChat() {
   const [searchUsers, setSearchUsers] = useState<SearchUser[]>([])
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+
 
 
 
@@ -209,26 +213,46 @@ function UserChat() {
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!messageInput.trim() && !file) return;
+
     try {
-      e.preventDefault();
-      if (!messageInput.trim()) return;
       setIsSending(true);
 
-      console.log(`${socket?.id}`);
+      let fileUrl = null;
 
-      const res = await axios.post(`/api/chats/${currentChatId}`, { content: messageInput, senderId: currentUserId });
+      if (file) {
+        const fileData = new FormData();
+        fileData.append("file", file);
 
-      if (res.data.message === "Message has been sent to the user") {
-        socket?.emit('newMessage', { message: res.data.messageData, chatId: currentChatId });
+        const fileRes = await axios.post(`/api/image_upload`, fileData, {
+          headers: { "Content-Type": "multipart/form-data" }
+        });
+
+        fileUrl = fileRes.data.url;
       }
 
-      setMessageInput('');
+      const res = await axios.post(`/api/chats/${currentChatId}`, {
+        content: messageInput,
+        senderId: currentUserId,
+        fileUrl,
+      });
+
+      socket?.emit("newMessage", { message: res.data.messageData, chatId: currentChatId });
+
+      setMessageInput("");
+      setFile(null);
+      setPreview(null);
+
     } catch (error) {
-      console.log("error in sending message ", error)
+      console.error(error);
     } finally {
       setIsSending(false);
     }
   };
+
+
+
 
   if (!currentChatId) {
     return (
@@ -346,13 +370,40 @@ function UserChat() {
                     </div>
                     <div
                       className={`${isCurrentUser
-                          ? 'bg-blue-600 text-white rounded-lg rounded-tr-none'
-                          : 'bg-white text-gray-800 rounded-lg rounded-tl-none border border-gray-200'
+                        ? 'bg-blue-600 text-white rounded-lg rounded-tr-none'
+                        : 'bg-white text-gray-800 rounded-lg rounded-tl-none border border-gray-200'
                         } px-4 py-2 shadow-sm`}
                     >
-                      <p className="text-sm break-words leading-relaxed">
-                        {message.content}
-                      </p>
+                      {message.content?.trim() && (
+                        <p className="text-sm break-words leading-relaxed">{message.content}</p>
+                      )}
+
+                      {message.fileUrl && (
+                        <div className="mt-2">
+                          {message.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                            <img
+                              src={message.fileUrl}
+                              alt="sent image"
+                              className="rounded-xl border border-gray-200 
+                   max-w-[70vw] sm:max-w-[250px] md:max-w-[350px] 
+                   max-h-[250px] sm:max-h-[250px] md:max-h-[350px] 
+                   object-cover"
+                            />
+                          ) : message.fileUrl.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                            <video
+                              src={message.fileUrl}
+                              controls
+                              className="rounded-xl border border-gray-200 
+                   max-w-[80vw] sm:max-w-[300px] md:max-w-[400px] 
+                   max-h-[250px] sm:max-h-[300px] md:max-h-[400px] 
+                   object-contain"
+                            />
+                          ) : null}
+                        </div>
+                      )}
+
+
+
                     </div>
                   </div>
                 </div>
@@ -409,11 +460,38 @@ function UserChat() {
                     </div>
                     <div
                       className={`${isCurrentUser
-                          ? 'bg-blue-500 text-white rounded-lg rounded-tr-none'
-                          : 'bg-gray-50 text-gray-800 rounded-lg rounded-tl-none border border-gray-200'
+                        ? 'bg-blue-500 text-white rounded-lg rounded-tr-none'
+                        : 'bg-gray-50 text-gray-800 rounded-lg rounded-tl-none border border-gray-200'
                         } px-4 py-2 shadow-sm`}
                     >
-                      <p className="text-sm break-words leading-relaxed">{message.content}</p>
+                      {message.content?.trim() && (
+                        <p className="text-sm break-words leading-relaxed">{message.content}</p>
+                      )}
+
+
+                      {message.fileUrl && (
+                        <div className="mt-2">
+                          {message.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                            <img
+                              src={message.fileUrl}
+                              alt="sent image"
+                              className="rounded-xl border border-gray-200 
+                   max-w-[70vw] sm:max-w-[250px] md:max-w-[350px] 
+                   max-h-[250px] sm:max-h-[250px] md:max-h-[350px] 
+                   object-cover"
+                            />
+                          ) : message.fileUrl.match(/\.(mp4|webm|ogg|mov)$/i) ? (
+                            <video
+                              src={message.fileUrl}
+                              controls
+                              className="rounded-xl border border-gray-200 
+                   max-w-[80vw] sm:max-w-[300px] md:max-w-[400px] 
+                   max-h-[250px] sm:max-h-[300px] md:max-h-[400px] 
+                   object-contain"
+                            />
+                          ) : null}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -435,7 +513,7 @@ function UserChat() {
 
 
       {/* Message Input */}
-      <div className="border-t border-gray-200 bg-white p-4 shadow-lg">
+      {/* <div className="border-t border-gray-200 bg-white p-4 shadow-lg">
         <form onSubmit={handleSendMessage} className="flex gap-2">
           <input
             type="text"
@@ -463,7 +541,87 @@ function UserChat() {
 
           </button>
         </form>
+      </div> */}
+      {/* Message Input Section */}
+      <div className="border-t border-gray-200 bg-white p-4 shadow-lg">
+        <form onSubmit={handleSendMessage} className="flex gap-2 items-center">
+          {/* File Upload Button */}
+          <input
+            type="file"
+            accept="image/*,video/*"
+            onChange={(e) => {
+              if (e.target.files?.[0]) {
+                setFile(e.target.files[0]);
+                setPreview(URL.createObjectURL(e.target.files[0]));
+              }
+            }}
+            className="hidden"
+            id="file-input"
+            disabled={!!messageInput.trim()} // disable file input if text exists
+          />
+          <label
+            htmlFor="file-input"
+            className={`p-2 rounded-lg cursor-pointer transition ${messageInput.trim()
+              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+              : "bg-gray-200 hover:bg-gray-300"
+              }`}
+          >
+            📎
+          </label>
+
+          {/* Text Input */}
+          <input
+            type="text"
+            value={messageInput}
+            onChange={(e) => setMessageInput(e.target.value)}
+            placeholder="Type a message..."
+            disabled={!!file} // disable text input if file selected
+            className={`flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow text-sm ${file ? "bg-gray-100 text-gray-400 cursor-not-allowed" : ""
+              }`}
+          />
+
+          {/* Send Button */}
+          <button
+            type="submit"
+            disabled={!messageInput.trim() && !file}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 font-medium"
+          >
+            {isSending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="hidden sm:inline">Sending...</span>
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4" />
+                <span className="hidden sm:inline">Send</span>
+              </>
+            )}
+          </button>
+        </form>
+
+        {/* Optional File Preview */}
+        {preview && (
+          <div className="mt-3 relative">
+            <button
+              onClick={() => {
+                setFile(null);
+                setPreview(null);
+              }}
+              className="absolute -top-2 -right-2 bg-white border border-gray-300 rounded-full p-1 shadow-sm hover:bg-gray-100"
+            >
+              <X className="h-4 w-4 text-gray-600" />
+            </button>
+
+            {file?.type.startsWith("image") ? (
+              <img src={preview} alt="preview" className="max-h-40 rounded-lg border" />
+            ) : (
+              <video src={preview} controls className="max-h-40 rounded-lg border" />
+            )}
+          </div>
+        )}
       </div>
+
 
 
       {/* Settings Modal */}
