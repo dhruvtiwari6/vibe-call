@@ -4,3 +4,6 @@ const globalForPrisma = globalThis as { prisma?: PrismaClient }
     
 export const prisma =   globalForPrisma.prisma ?? (globalForPrisma.prisma = new PrismaClient())
 
+
+
+ 
