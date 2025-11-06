@@ -19,9 +19,10 @@ export default function Friends() {
     };
 
 
-    const loadChat = async (id: string) => {
+    const loadChat = async(id: string) => {
         closeSidebar();
         console.log("Loading chat with ID: ", id);
+        socket?.emit("markAsRead", {userId : currentUserId, chatId : id})
         {count && count.delete(id)}
 
 

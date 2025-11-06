@@ -238,7 +238,7 @@ function UserChat() {
         fileUrl,
       });
 
-      socket?.emit("newMessage", { message: res.data.messageData, chatId: currentChatId });
+      socket?.emit("newMessage", { message: res.data.messageData, chatId: currentChatId, senderId: currentUserId });
 
       setMessageInput("");
       setFile(null);
