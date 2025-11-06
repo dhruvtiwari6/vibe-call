@@ -1,9 +1,6 @@
 import { create } from 'zustand'
 import axios from 'axios'
 import { io, Socket } from 'socket.io-client'
-import { ScrollAreaThumb } from '@radix-ui/react-scroll-area'
-import { count } from 'console'
-import { Messages } from '@prisma/client'
 
 interface Chats {
     chatId: string,
@@ -11,7 +8,6 @@ interface Chats {
     chatName: string,
     updatedAt: Date
 }
-
 
 interface User {
     id: string;
@@ -27,12 +23,7 @@ interface Message {
     senderId: string;
     sender: User;
     fileUrl?: string | null;
-
 }
-
-
-
-
 
 interface UserChats {
     chats: Chats[]
@@ -45,8 +36,8 @@ interface UserChats {
     setCursor: (id: string | null) => void
     setCurrentChatName: (name: string) => void
     createSocket: (id: string) => void
-    setStatus: (id: string, chatId: string) => void
-    setRecentMessages : ()=> void
+    requestStatus: (chatId: string) => void
+    setRecentMessages: () => void
     currentStatus: string
     socket?: Socket
     currentChatName?: string
@@ -56,7 +47,6 @@ interface UserChats {
     cursor?: string | null
     recentMessages: Array<Message>
     count?: Map<string, number>
-
 }
 
 export const userChatStore = create<UserChats>((set, get) => ({
@@ -92,8 +82,8 @@ export const userChatStore = create<UserChats>((set, get) => ({
         }
     },
 
-    createSocket: (id: string,) => {
-        const socketInstance = io('http://localhost:3000', {
+    createSocket: (id: string) => {
+        const socketInstance = io(`http://localhost:${process.env.NEXT_PUBLIC_SOCKET_PORT}`, {
             transports: ['websocket', 'polling'],
             query: { userId: id }
         });
@@ -113,50 +103,52 @@ export const userChatStore = create<UserChats>((set, get) => ({
         socketInstance.on('newMessage', (data) => {
             const chatId = data.data.chatId;
             const currentChatId = get().currentChatId;
-            const count = new Map(get().count); 
+            const count = new Map(get().count);
 
-            // console.log("current chat id : " , chatId);
-            console.log("prev chat id : ," , get().prevChatId, " and current chat id : ", currentChatId);
+            console.log("prev chat id:", get().prevChatId, "| current chat id:", currentChatId);
 
             if (chatId === currentChatId) {
-              if(get().prevChatId !== currentChatId){
-                set({recentMessages: []});
-              }
+                if (get().prevChatId !== currentChatId) {
+                    set({ recentMessages: [] });
+                }
                 set((state) => ({
                     recentMessages: [...state.recentMessages, data.data.message],
                 }));
                 console.log(get().recentMessages);
-                console.log("New message for current chat received:", data.data.messsage);
+                console.log("New message for current chat received:", data.data.message);
             } else {
                 // Increment unread count for that chat
                 const currentCount = count.get(chatId) || 0;
                 count.set(chatId, currentCount + 1);
-                set({ count }); // update Zustand store
+                set({ count });
 
                 console.log("New message for other chat received. Updated count:", count.get(chatId));
             }
         });
 
+        // Setup status listener ONCE during socket creation
+        socketInstance.on('userStatusUpdate', (data) => {
+            console.log("Status update received:", data);
+            set({ currentStatus: data.status });
+        });
 
         socketInstance.on('joinRoom', (data) => {
-            console.log(" joined the room : ", data)
+            console.log("joined the room:", data);
         });
     },
 
-    setStatus: (id: string, chatId: string) => {
+    // Request status for a specific chat
+    requestStatus: (chatId: string) => {
         const socket = get().socket;
-        console.log("emitting status for id: ", id, " | socket: ", socket);
+        const userId = get().currentUserId;
 
-        if (socket) {
-            socket.emit("Status", { id, chatId });
-
-            socket.on("Status", (data) => {
-                console.log("Status update received:", data.status);
-                set({ currentStatus: data.status });
-            });
-        } else {
-            console.warn("⚠️ Socket not connected, cannot emit status");
+        if (!socket || !userId) {
+            console.warn("⚠️ Socket or userId not available");
+            return;
         }
+
+        console.log("Requesting status for chatId:", chatId);
+        socket.emit("Status", { id: userId, chatId });
     },
 
     setCurrentChatId: (id: string) => set({ currentChatId: id }),
