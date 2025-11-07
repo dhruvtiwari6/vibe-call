@@ -62,15 +62,17 @@ model Chats {
 }
 
 model Messages {
-  id        String   @id @default(cuid())
-  sender_id String
-  content   String
-  fileUrl   String?
-  chatId    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  chat      Chats    @relation(fields: [chatId], references: [id])
-  sender    User     @relation("MessageSender", fields: [sender_id], references: [id])
+  id                String   @id @default(cuid())
+  sender_id         String
+  content           String
+  fileUrl           String?
+  resourceType      String?
+  duration          Float?
+  chatId            String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  chat              Chats    @relation(fields: [chatId], references: [id])
+  sender            User     @relation("MessageSender", fields: [sender_id], references: [id])
 }
 
 model ChatParticipant {

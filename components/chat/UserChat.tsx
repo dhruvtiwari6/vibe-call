@@ -219,9 +219,12 @@ function UserChat() {
     try {
       setIsSending(true);
 
-      let fileUrl = null;
+      let fileControl = null;
+
+  
 
       if (file) {
+        console.log("went into the file sending part");
         const fileData = new FormData();
         fileData.append("file", file);
 
@@ -229,14 +232,18 @@ function UserChat() {
           headers: { "Content-Type": "multipart/form-data" }
         });
 
-        fileUrl = fileRes.data.url;
+        fileControl = fileRes.data;
+        console.log("file Contorl : ", fileControl);
       }
+
+
 
       const res = await axios.post(`/api/chats/${currentChatId}`, {
         content: messageInput,
         senderId: currentUserId,
-        fileUrl,
+        fileControl : fileControl,
       });
+
 
       socket?.emit("newMessage", { message: res.data.messageData, chatId: currentChatId, senderId: currentUserId });
 

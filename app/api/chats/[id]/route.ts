@@ -36,118 +36,120 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     }
 }
 
+
 // export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-//     const { id: recipientId } = await context.params; // This is recipientId
-//     console.log("recipientId : ", recipientId);
+//   const { id: recipientId } = await context.params;
+//   console.log("recipientId : ", recipientId);
 
-//     try {
-//         const { content, senderId } = await req.json();
+//   try {
+//     const { content, senderId, fileUrl } = await req.json();
 
-//         if (!senderId || !content) {
-//             return NextResponse.json({ error: "Missing Fields" }, { status: 400 });
-//         }
+//     console.log("content:", content);
+//     console.log("fileUrl:", fileUrl);
 
-//         // Your existing POST logic here...
-//         let chat = await prisma.chats.findFirst({
-//             where: {
-//                 id: recipientId
-//             },
-//         });
-
-//         let actualChatId: string | undefined = chat?.id;
-
-//         if (!chat) {  // chatId is actually recipient user ID, create new chat
-//             console.log("there does not eexist a chat betweeen these users")
-//             try {
-//                 const newChat = await prisma.chats.create({
-//                     data: {
-//                         isGroupChat: false,
-//                         participants: {
-//                             create: [
-//                                 { user: { connect: { id: recipientId } } }, // recipient user ID
-//                                 { user: { connect: { id: senderId } } }
-//                             ]
-//                         },
-//                     },
-//                 });
-
-//                 actualChatId = newChat.id;
-
-//             } catch (createChatError) {
-//                 console.error("Failed to create chat:", createChatError);
-//                 return NextResponse.json({ error: "Failed to create chat" }, { status: 500 });
-//             }
-//         }
-
-//         if (!actualChatId) {
-//             return NextResponse.json({ error: "Chat ID could not be determined" }, { status: 500 });
-//         }
-
-//         // Create the message
-//         try {
-//             const message = await prisma.messages.create({
-//                 data: {
-//                     chat: { connect: { id: actualChatId } },
-//                     sender: { connect: { id: senderId } },
-//                     content,
-//                 },
-//                 include: {
-//                     sender: {
-//                         select: { id: true, name: true, avatar: true }
-//                     }
-//                 }
-//             });
-
-            
-
-
-//             return NextResponse.json({
-//                 message: "Message has been sent to the user",
-//                 chatId: actualChatId,
-//                 messageData: message
-//             }, { status: 200 });
-
-//         } catch (createMessageError) {
-//             console.error("Failed to send message:", createMessageError);
-//             return NextResponse.json({ error: "Failed to send message" }, { status: 500 });
-//         }
-
-//     } catch (error) {
-//         console.error("Error in POST request:", error);
-//         return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+//     // Validation: senderId required AND either content OR fileUrl (not both)
+//     if (!senderId || (!content && !fileUrl)) {
+//         console.log("kjaaa");
+//       return NextResponse.json({ error: "Missing Fields" }, { status: 400 });
 //     }
+
+
+//     if (content && fileUrl) {
+//       return NextResponse.json({ error: "Cannot send text and file in the same message" }, { status: 400 });
+//     }
+
+//     // Find existing chat
+//     let chat = await prisma.chats.findFirst({
+//       where: { id: recipientId },
+//     });
+
+//     let actualChatId: string | undefined = chat?.id;
+
+//     if (!chat) {
+//       // Create new chat if it doesn't exist
+//       const newChat = await prisma.chats.create({
+//         data: {
+//           isGroupChat: false,
+//           participants: {
+//             create: [
+//               { user: { connect: { id: recipientId } } },
+//               { user: { connect: { id: senderId } } },
+//             ],
+//           },
+//         },
+//       });
+
+//       actualChatId = newChat.id;
+//     }
+
+//     if (!actualChatId) {
+//       return NextResponse.json({ error: "Chat ID could not be determined" }, { status: 500 });
+//     }
+
+
+//     console.log("you reached here");
+
+//     // Create the message
+//     const message = await prisma.messages.create({
+//       data: {
+//         chat: { connect: { id: actualChatId } },
+//         sender: { connect: { id: senderId } },
+//         content: content || "",
+//         fileUrl: fileUrl || null,
+//       },
+//       include: {
+//         sender: { select: { id: true, name: true, avatar: true } },
+//       },
+//     });
+
+//     return NextResponse.json(
+//       {
+//         message: "Message has been sent to the user",
+//         chatId: actualChatId,
+//         messageData: message,
+//       },
+//       { status: 200 }
+//     );
+
+//   } catch (error) {
+//     console.error("Error in POST request:", error);
+//     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+//   }
 // }
+
+
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: recipientId } = await context.params;
-  console.log("recipientId : ", recipientId);
+  console.log("recipientId:", recipientId);
 
   try {
-    const { content, senderId, fileUrl } = await req.json();
+    // 👇 full request includes fileRes.data (the Cloudinary result)
+    const { content, senderId, fileControl} = await req.json();
 
     console.log("content:", content);
-    console.log("fileUrl:", fileUrl);
+    console.log("file:", fileControl);
 
-    // Validation: senderId required AND either content OR fileUrl (not both)
-    if (!senderId || (!content && !fileUrl)) {
-        console.log("kjaaa");
-      return NextResponse.json({ error: "Missing Fields" }, { status: 400 });
+    // ✅ Validation
+    if (!senderId || (!content && !fileControl)) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-
-    if (content && fileUrl) {
-      return NextResponse.json({ error: "Cannot send text and file in the same message" }, { status: 400 });
+    if (content && fileControl) {
+      return NextResponse.json(
+        { error: "Cannot send text and file together" },
+        { status: 400 }
+      );
     }
 
-    // Find existing chat
+    // 🧩 Find or create chat
     let chat = await prisma.chats.findFirst({
       where: { id: recipientId },
     });
 
-    let actualChatId: string | undefined = chat?.id;
+    let actualChatId = chat?.id;
 
     if (!chat) {
-      // Create new chat if it doesn't exist
       const newChat = await prisma.chats.create({
         data: {
           isGroupChat: false,
@@ -159,7 +161,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           },
         },
       });
-
       actualChatId = newChat.id;
     }
 
@@ -167,16 +168,28 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ error: "Chat ID could not be determined" }, { status: 500 });
     }
 
+    // 🧠 Extract file info (if exists)
+    let fileUrl = null;
+    let resourceType = null;
+    let duration = null;
 
-    console.log("you reached here");
 
-    // Create the message
+    if (fileControl) {
+      fileUrl = fileControl.url.url;
+      resourceType = fileControl.url.resource_type || null; // "image" or "video"
+      duration = fileControl.url.duration || null;
+
+    }
+
+    // 💾 Save message
     const message = await prisma.messages.create({
       data: {
         chat: { connect: { id: actualChatId } },
         sender: { connect: { id: senderId } },
         content: content || "",
-        fileUrl: fileUrl || null,
+        fileUrl,
+        resourceType,
+        duration,
       },
       include: {
         sender: { select: { id: true, name: true, avatar: true } },
@@ -193,7 +206,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     );
 
   } catch (error) {
-    console.error("Error in POST request:", error);
+    console.error("❌ Error in POST request:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
