@@ -4,6 +4,7 @@ import { userChatStore } from '@/store/chatStore';
 import axios from 'axios'
 import SettingModal from '../modals/SettingModal';
 import AddMemberModal from '../modals/AddMemberModal';
+import VideoPlayer from './VideoPlayer';
 
 interface User {
   id: string;
@@ -397,14 +398,21 @@ function UserChat() {
                    object-cover"
                             />
                           ) : message.fileUrl.match(/\.(mp4|webm|ogg|mov)$/i) ? (
-                            <video
-                              src={message.fileUrl}
-                              controls
-                              className="rounded-xl border border-gray-200 
-                   max-w-[80vw] sm:max-w-[300px] md:max-w-[400px] 
-                   max-h-[250px] sm:max-h-[300px] md:max-h-[400px] 
-                   object-contain"
-                            />
+                  //           <video
+                  //             src={message.fileUrl}
+                  //             controls
+                  //             className="rounded-xl border border-gray-200 
+                  //  max-w-[80vw] sm:max-w-[300px] md:max-w-[400px] 
+                  //  max-h-[250px] sm:max-h-[300px] md:max-h-[400px] 
+                  //  object-contain"
+                  //           />
+
+                                              <VideoPlayer
+  src={message.fileUrl}
+  className="rounded-xl border border-gray-200 
+    max-w-[80vw] sm:max-w-[300px] md:max-w-[400px] 
+    max-h-[250px] sm:max-h-[300px] md:max-h-[400px]"
+/>
                           ) : null}
                         </div>
                       )}
