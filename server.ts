@@ -119,7 +119,112 @@ app.prepare().then(async () => {
             await pubClient.del(`unread:${userId}:${chatId}`);
             socket.emit("unreadCountUpdate", { chatId, count: 0 });
         });
+        
+        
+        socket.on("video call has been started" , async(data)=>{
+            const participants = await prisma.chats.findFirst({
+                where : {id : data.chatId},
+                include : {participants : true}
+            })
 
+            if(participants) {
+                participants.participants.forEach(p => {
+                    if(p.user_id !== data.org){
+                        socket.to(p.user_id).emit("friend started video call", data);
+                    }
+                });
+            }
+        })
+
+      socket.on("sdp-offer", async (data) => {
+    const { chatId, senderId } = data;
+
+    try {
+      const chat = await prisma.chats.findFirst({
+        where: { id: chatId },
+        include: { participants: true },
+      });
+
+      if (chat) {
+        for (const p of chat.participants) {
+          if (p.user_id !== senderId) {
+            io.to(p.user_id).emit("sdp-offer", data);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error handling offer:", err);
+    }
+  });
+
+  // Handle SDP Answer
+  socket.on("sdp-answer", async (data) => {
+    const { chatId, senderId } = data;
+
+    try {
+      const chat = await prisma.chats.findFirst({
+        where: { id: chatId },
+        include: { participants: true },
+      });
+
+      if (chat) {
+        for (const p of chat.participants) {
+          if (p.user_id !== senderId) {
+            io.to(p.user_id).emit("sdp-answer", data);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error handling answer:", err);
+    }
+  });
+
+  // Handle ICE Candidate
+  socket.on("ice-candidate", async (data) => {
+    const { chatId, senderId } = data;
+
+    try {
+      const chat = await prisma.chats.findFirst({
+        where: { id: chatId },
+        include: { participants: true },
+      });
+
+      if (chat) {
+        for (const p of chat.participants) {
+          if (p.user_id !== senderId) {
+            io.to(p.user_id).emit("ice-candidate", data);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error handling ICE candidate:", err);
+    }
+  });
+// Backend socket handler
+socket.on("end-call", async(data) => {
+  const { chatId, senderId } = data;
+
+  try {
+      const chat = await prisma.chats.findFirst({
+        where: { id: chatId },
+        include: { participants: true },
+      });
+
+      if (chat) {
+        for (const p of chat.participants) {
+          if (p.user_id !== senderId) {
+            io.to(p.user_id).emit("call-ended");
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error handling ICE candidate:", err);
+    }
+  
+  // Broadcast to all users in the chat except the sender
+});
+
+        
 
     });
 
@@ -127,3 +232,4 @@ app.prepare().then(async () => {
         console.log(`🚀 Server ready at http://${hostname}:${port}`);
     });
 });
+

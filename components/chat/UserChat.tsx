@@ -5,6 +5,9 @@ import axios from 'axios'
 import SettingModal from '../modals/SettingModal';
 import AddMemberModal from '../modals/AddMemberModal';
 import VideoPlayer from './VideoPlayer';
+import VideoCall from '../VideoCall/page';
+
+import IncomingCallModal from '../modals/IncomingCallModal';
 
 interface User {
   id: string;
@@ -30,7 +33,9 @@ interface Message {
 }
 
 function UserChat() {
-  const { currentChatId, prevChatId, setPrevChatId, currentUserId, cursor, setCursor, currentChatName, currentStatus, socket, count, recentMessages, setRecentMessages } = userChatStore();
+  const { currentChatId, prevChatId, setPrevChatId, currentUserId, cursor, setCursor, currentChatName, currentStatus, socket, recentMessages, setRecentMessages,
+    accepting, videoCall, setVideoCall
+  } = userChatStore();
   const [page, setPage] = useState<number>(0);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -48,6 +53,33 @@ function UserChat() {
   const [preview, setPreview] = useState<string | null>(null);
 
 
+  const handleEndCall = () => {
+    console.log("baby");
+    socket?.emit('end-call', { chatId: currentChatId });
+    setVideoCall(false);
+  }
+
+  useEffect(() => {
+    if (!socket) return;
+
+    // Handle incoming end-call event
+    const handleEndCall = () => {
+      console.log("Received end-call event from remote user");
+      setVideoCall(false);
+    };
+
+    socket.on('end-call', handleEndCall);
+
+    // Cleanup
+    return () => {
+      socket.off('end-call', handleEndCall);
+    };
+  }, [socket, setVideoCall]);
+
+  const VideoCallHandler = () => {
+    socket?.emit("video call has been started", { chatId: currentChatId, org: currentUserId });
+    setVideoCall(!videoCall);
+  }
 
 
   useEffect(() => {
@@ -222,7 +254,7 @@ function UserChat() {
 
       let fileControl = null;
 
-  
+
 
       if (file) {
         console.log("went into the file sending part");
@@ -242,7 +274,7 @@ function UserChat() {
       const res = await axios.post(`/api/chats/${currentChatId}`, {
         content: messageInput,
         senderId: currentUserId,
-        fileControl : fileControl,
+        fileControl: fileControl,
       });
 
 
@@ -310,6 +342,7 @@ function UserChat() {
         <div className="flex items-center gap-4 text-gray-600">
           <button
             className="p-2 rounded-full hover:bg-blue-50 hover:text-blue-600 transition"
+            onClick={VideoCallHandler}
             title="Start Video Call"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -398,21 +431,21 @@ function UserChat() {
                    object-cover"
                             />
                           ) : message.fileUrl.match(/\.(mp4|webm|ogg|mov)$/i) ? (
-                  //           <video
-                  //             src={message.fileUrl}
-                  //             controls
-                  //             className="rounded-xl border border-gray-200 
-                  //  max-w-[80vw] sm:max-w-[300px] md:max-w-[400px] 
-                  //  max-h-[250px] sm:max-h-[300px] md:max-h-[400px] 
-                  //  object-contain"
-                  //           />
+                            //           <video
+                            //             src={message.fileUrl}
+                            //             controls
+                            //             className="rounded-xl border border-gray-200 
+                            //  max-w-[80vw] sm:max-w-[300px] md:max-w-[400px] 
+                            //  max-h-[250px] sm:max-h-[300px] md:max-h-[400px] 
+                            //  object-contain"
+                            //           />
 
-                                              <VideoPlayer
-  src={message.fileUrl}
-  className="rounded-xl border border-gray-200 
+                            <VideoPlayer
+                              src={message.fileUrl}
+                              className="rounded-xl border border-gray-200 
     max-w-[80vw] sm:max-w-[300px] md:max-w-[400px] 
     max-h-[250px] sm:max-h-[300px] md:max-h-[400px]"
-/>
+                            />
                           ) : null}
                         </div>
                       )}
@@ -660,6 +693,17 @@ function UserChat() {
           members={members}
         />
       )}
+
+
+
+
+      {(videoCall || accepting) && (
+        <div className="fixed inset-0 z-50 bg-black">
+          <VideoCall onEndCall={handleEndCall} />
+        </div>
+      )}
+
+
     </div>
   );
 }
