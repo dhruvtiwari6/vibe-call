@@ -204,6 +204,8 @@ app.prepare().then(async () => {
 socket.on("end-call", async(data) => {
   const { chatId, senderId } = data;
 
+  console.log("call ended");
+
   try {
       const chat = await prisma.chats.findFirst({
         where: { id: chatId },
@@ -212,9 +214,7 @@ socket.on("end-call", async(data) => {
 
       if (chat) {
         for (const p of chat.participants) {
-          if (p.user_id !== senderId) {
-            io.to(p.user_id).emit("call-ended");
-          }
+            io.to(p.user_id).emit("call-end");
         }
       }
     } catch (err) {

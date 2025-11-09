@@ -7,7 +7,6 @@ import AddMemberModal from '../modals/AddMemberModal';
 import VideoPlayer from './VideoPlayer';
 import VideoCall from '../VideoCall/page';
 
-import IncomingCallModal from '../modals/IncomingCallModal';
 
 interface User {
   id: string;
@@ -34,7 +33,7 @@ interface Message {
 
 function UserChat() {
   const { currentChatId, prevChatId, setPrevChatId, currentUserId, cursor, setCursor, currentChatName, currentStatus, socket, recentMessages, setRecentMessages,
-    accepting, videoCall, setVideoCall
+    accepting, videoCall, setVideoCall, setAccepting
   } = userChatStore();
   const [page, setPage] = useState<number>(0);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -54,29 +53,14 @@ function UserChat() {
 
 
   const handleEndCall = () => {
-    console.log("baby");
-    socket?.emit('end-call', { chatId: currentChatId });
+    console.log("okay so you want to end the call");
     setVideoCall(false);
+    setAccepting(false);
   }
 
-  useEffect(() => {
-    if (!socket) return;
-
-    // Handle incoming end-call event
-    const handleEndCall = () => {
-      console.log("Received end-call event from remote user");
-      setVideoCall(false);
-    };
-
-    socket.on('end-call', handleEndCall);
-
-    // Cleanup
-    return () => {
-      socket.off('end-call', handleEndCall);
-    };
-  }, [socket, setVideoCall]);
 
   const VideoCallHandler = () => {
+    console.log('i have sent the request to calllllllll');
     socket?.emit("video call has been started", { chatId: currentChatId, org: currentUserId });
     setVideoCall(!videoCall);
   }

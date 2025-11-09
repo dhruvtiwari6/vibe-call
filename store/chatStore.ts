@@ -50,6 +50,8 @@ interface UserChats {
     accepting: Boolean;
     videoCall: Boolean,
     setVideoCall : (data : boolean)=> void
+    setAccepting : (data : boolean)=> void
+
 
 
 
@@ -195,7 +197,8 @@ export const userChatStore = create<UserChats>((set, get) => ({
     setCursor: (id: string | null) => set({ cursor: id }),
     setCurrentChatName: (name: string) => set({ currentChatName: name }),
     setRecentMessages: () => set({ recentMessages: [] }),
-    setVideoCall: (data : boolean) => set({ videoCall:data })
+    setVideoCall: (data : boolean) => set({ videoCall:data }),
+    setAccepting: (data : boolean) => set({ accepting: data }),
 
 }));
 

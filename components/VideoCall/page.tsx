@@ -598,7 +598,7 @@ interface VideoCallProps {
 }
 
 const VideoCall = ({ onEndCall }: VideoCallProps) => {
-  const { currentChatId, currentUserId, socket  ,setVideoCall} = userChatStore();
+  const { currentChatId, currentUserId, socket  ,setVideoCall, setAccepting} = userChatStore();
 
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const localStream = useRef<MediaStream | null>(null);
@@ -762,12 +762,10 @@ const VideoCall = ({ onEndCall }: VideoCallProps) => {
         });
 
         // Listen for remote user ending the call
-        // socket.on("call-ended", (data) => {
-          // if (data.chatId === currentChatId && data.senderId !== currentUserId) {
-            // console.log("Remote user ended the call");
-            // onEndCall();
-          // }
-        // });
+        socket.on("call-end", (data) => {
+            console.log("Remote user ended the call");
+            onEndCall();
+        });
 
         if (!isMounted) return;
 
@@ -844,12 +842,14 @@ const VideoCall = ({ onEndCall }: VideoCallProps) => {
     }
     
     // Emit socket event to notify the other user
-    if (socket && currentChatId && currentUserId) {
-      socket.emit("end-call", {
+      console.log("i am ending the vc");
+      socket?.emit("end-call", {
         chatId: currentChatId,
       });
+
+      setAccepting(false);
       setVideoCall(false);
-    }
+    
     
     // Close the video call UI
     setCallStatus("ended");
