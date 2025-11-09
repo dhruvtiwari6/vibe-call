@@ -13,6 +13,8 @@ export async function POST(req: NextRequest) {
         const body: Data = await req.json();
         const { chatName, chatMembers, AdminId } = body;
 
+        console.log("body : ", body);
+
         //create a chat Room
         const new_chat = await prisma.chats.create({
             data: {
@@ -33,12 +35,15 @@ export async function POST(req: NextRequest) {
 
         // add members as participants
         await prisma.chatParticipant.createMany({
-            data: chatMembers.map((userId) => ({
-                chat_id: new_chat.id,
-                user_id: userId,
-                role: "member",
-            })),
+            data: chatMembers
+                .filter((userId) => userId !== AdminId) // remove the admin
+                .map((userId) => ({
+                    chat_id: new_chat.id,
+                    user_id: userId,
+                    role: "member",
+                })),
         });
+
         return NextResponse.json({ success: true, chat: new_chat });
     } catch (error) {
         console.error(error);

@@ -258,6 +258,7 @@ interface UserChats {
     setVideoCall: (data: boolean) => void
     setIncomingCall: (data: boolean) => void
     setCallerName: (name: string) => void
+    groupCreationFetching : (email: string) => Promise<void>
 }
 
 export const userChatStore = create<UserChats>((set, get) => ({
@@ -296,6 +297,27 @@ export const userChatStore = create<UserChats>((set, get) => ({
             throw error;
         }
     },
+
+     groupCreationFetching: async (email: string) => {
+        set({ isLoading: true });
+        try {
+            if (!email) throw new Error("email not found");
+            const response = await axios.get('/api/chats/recent', { params: { email } });
+            set((state) => ({
+                chats: [...response.data.chats],
+                isLoading: false
+            }));
+
+            const socket = get().socket;
+            socket?.emit('joinRoom', { allChats: response.data.chats, userId: get().currentUserId });
+
+            console.log("all participants: ", response.data.chats);
+        } catch (error) {
+            set({ isLoading: false });
+            throw error;
+        }
+    },
+
 
     createSocket: (id: string) => {
         const socketInstance = io(`http://localhost:${process.env.NEXT_PUBLIC_SOCKET_PORT}`, {
