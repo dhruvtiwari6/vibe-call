@@ -598,7 +598,7 @@ interface VideoCallProps {
 }
 
 const VideoCall = ({ onEndCall }: VideoCallProps) => {
-  const { currentChatId, currentUserId, socket  ,setVideoCall, setAccepting} = userChatStore();
+  const { currentChatId, currentUserId, socket  ,setVideoCall} = userChatStore();
 
   const peerConnection = useRef<RTCPeerConnection | null>(null);
   const localStream = useRef<MediaStream | null>(null);
@@ -847,7 +847,7 @@ const VideoCall = ({ onEndCall }: VideoCallProps) => {
         chatId: currentChatId,
       });
 
-      setAccepting(false);
+      // setAccepting(false);
       setVideoCall(false);
     
     
