@@ -39,6 +39,8 @@ app.prepare().then(async () => {
     const userId = socket.handshake.query.userId as string;
     if (!userId) return;
 
+    pubClient.sadd(userId, socket.id)
+
     socket.join(userId);
 
 
@@ -48,6 +50,10 @@ app.prepare().then(async () => {
 
     socket.on('disconnect', () => {
       pubClient.srem(ONLINE_USERS_KEY, userId);
+      socket.on("disconnect", async () => {
+        await pubClient.srem(userId, socket.id);
+      });
+
       console.log('user disconnected: ', userId);
 
       io.emit('userStatusUpdate', { userId, status: 'offline' });
@@ -74,9 +80,12 @@ app.prepare().then(async () => {
 
     socket.on("joinRoom", async (data) => {
       const { allChats, userId } = data;
+
+      console.log("wtf is this allChats: ", allChats);
       allChats.forEach(async (chat: any) => {
         socket.join(chat.chatId);
         const newCount = await pubClient.get(`unread:${userId}:${chat.chatId}`);
+        await pubClient.sadd(`userJoinedRoom:${userId}`, chat.chatId);
 
         console.log("callled with count ", newCount);
 
@@ -88,6 +97,37 @@ app.prepare().then(async () => {
       });
     });
 
+    socket.on("memberRemove",
+      async (
+        { memberId, chatId },
+        cb: (res: { success: boolean; message?: string }) => void
+      ) => {
+        const isInChat = await pubClient.sismember(
+          `userJoinedRoom:${memberId}`,
+          chatId
+        );
+
+        if (!isInChat) {
+          return cb({ success: false, message: "User not in chat" });
+        }
+
+        const socketIds = await pubClient.smembers(memberId);
+
+        for (const sid of socketIds) {
+          io.sockets.sockets.get(sid)?.leave(chatId);
+        }
+
+        await pubClient.srem(`userJoinedRoom:${memberId}`, chatId);
+
+        // notify others
+        socket.to(chatId).emit("memberRemoved", { memberId, chatId });
+
+        cb({ success: true });
+      }
+    );
+
+
+
     socket.on("newMessage", async (data) => {
       console.log(`Broadcasting new message to room ${data}`);
 
@@ -96,12 +136,16 @@ app.prepare().then(async () => {
         include: { participants: true }
       })
 
+      if (!chat || !chat.participants.some(p => p.user_id === data.senderId)) return;
+
+      console.log("participants : ", chat);
+
       for (const participant of chat?.participants!) {
         const user_id = participant.user_id;
         if (user_id != data.senderId) {
           const newCount = await pubClient.incr(`unread:${user_id}:${data.chatId}`);
 
-          console.log(user_id);
+          console.log("messsage jaa rha hai user id : ", user_id);
 
           io.to(user_id).emit('unreadCountUpdate', {
             chatId: data.chatId,
@@ -109,6 +153,8 @@ app.prepare().then(async () => {
           });
         }
       }
+
+      console.log("allsocket in the particular rooom",)
 
       io.to(data.chatId).emit("newMessage", { data });
     });

@@ -44,11 +44,33 @@ export async function POST(req: NextRequest) {
                     }
                 });
 
-                return NextResponse.json({ message: "Member removed successfully" }, { status: 200 });
+                return NextResponse.json({ message: "Member leaved successfully" }, { status: 200 });
             } else {
                 return NextResponse.json({ message: "Insufficient permissions to remove member" }, { status: 403 });
             }
         }
+
+        if (method === "leave") {
+            const { count } = await prisma.chatParticipant.deleteMany({
+                where: {
+                    chat_id: chatId,
+                    user_id: memberId,
+                },
+            });
+
+            if (count > 0) {
+                return NextResponse.json(
+                    { message: "Member leaved successfully" },
+                    { status: 200 }
+                );
+            }
+
+            return NextResponse.json(
+                { message: "User is not part of this chat" },
+                { status: 404 }
+            );
+        }
+
 
         return NextResponse.json({ message: "Invalid method. Use 'add' or 'remove'" }, { status: 400 });
 

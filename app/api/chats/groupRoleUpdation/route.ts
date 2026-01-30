@@ -38,6 +38,35 @@ export async function POST(req: NextRequest) {
       } else {
         return NextResponse.json({ message: "You cannot promote this member" }, { status: 403 });
       }
+    }else if (method === "demote") {
+      const ownership = await prisma.chatParticipant.findFirst({
+        where: { chat_id: chatId, user_id: operation_perf_id },
+      });
+
+      const member_to_updation = await prisma.chatParticipant.findFirst({
+        where: { chat_id: chatId, user_id: memberId },
+      });
+
+      if (!ownership || !member_to_updation) {
+        return NextResponse.json(
+          { message: "Participant not found or admin not found" },
+          { status: 404 }
+        );
+      }
+
+      if (
+        (ownership.role === "superAdmin") &&
+        member_to_updation.role === "admin"
+      ) {
+        await prisma.chatParticipant.update({
+          where: { id: member_to_updation.id },
+          data: { role: "member" },
+        });
+
+        return NextResponse.json({ message: "Member demoted to member" }, { status: 200 });
+      } else {
+        return NextResponse.json({ message: "You cannot demote him/her" }, { status: 403 });
+      }
     }
 
     return NextResponse.json({ message: "Invalid method" }, { status: 400 });

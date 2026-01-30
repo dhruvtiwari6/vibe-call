@@ -5,15 +5,17 @@ import { LogOut } from "lucide-react";
 import axios from "axios";
 import { UserMinus } from "lucide-react";
 import { X } from "lucide-react";
+import { ShieldOff } from "lucide-react";
+import { userChatStore } from "@/store/chatStore";
 
 interface SettingModalProps {
-  setShowModal: React.Dispatch<React.SetStateAction<boolean>>;
-  setShowAddMemberModal: React.Dispatch<React.SetStateAction<boolean>>;
-  members: Array<{ id: string; name: string; role: string }>;
-  currentUserId: string;
-  currentChatId: string;
-  loading: boolean;
-  setMembers: React.Dispatch<React.SetStateAction<User[]>>;
+    setShowModal: React.Dispatch<React.SetStateAction<boolean>>;
+    setShowAddMemberModal: React.Dispatch<React.SetStateAction<boolean>>;
+    members: Array<{ id: string; name: string; role: string }>;
+    currentUserId: string;
+    currentChatId: string;
+    loading: boolean;
+    setMembers: React.Dispatch<React.SetStateAction<User[]>>;
 }
 
 
@@ -36,7 +38,7 @@ const SettingModal = ({
     loading,
     setMembers,
 }: SettingModalProps) => {
-
+    const { socket } = userChatStore();
 
 
     const handleRemoveMember = async (memberId: string, chatId: string, operation_perf_id: string | undefined) => {
@@ -47,7 +49,20 @@ const SettingModal = ({
 
             if (res.data.message === "Member removed successfully") {
                 setMembers(prev => prev.filter(m => m.id !== memberId));
-                alert('Member removed');
+
+                //remove the member also from socket room
+                socket?.emit(
+                    "memberRemove",
+                    { memberId , chatId},
+                    (result: { success: boolean; message?: string }) => {
+                        if (result.success) {
+                            alert("Member removed");
+                        } else {
+                            alert(result.message || "Failed to remove member");
+                        }
+                    }
+                );
+
             } else if (res.data.message === "Insufficient permissions to remove member") {
                 alert("don't have suffficient permission");
             }
@@ -77,10 +92,52 @@ const SettingModal = ({
         }
     };
 
-    const handleLeaveGroup = () => {
-        if (confirm("Leave this group?")) {
-            setShowModal(false);
-            alert('You left the group');
+    const handleDemoteRole = async (memberId: string, chatId: string, operation_perf_id: string | undefined) => {
+        try {
+            const res = await axios.post(`/api/chats/groupRoleUpdation?method=demote`, {
+                memberId, chatId, operation_perf_id
+            })
+
+            if (res.data.message === "Member demoted to member") {
+                setMembers(prev => prev.map(m =>
+                    m.id === memberId ? { ...m, role: "member" } : m
+                ));
+                alert(`Role updated to member`);
+            } else if (res.data.message === "You cannot promote this member") {
+                alert(`Don't have sufficient authority`);
+            }
+        } catch (error: any) {
+            console.error("Error demoting member role:", error);
+            alert(error.response?.data?.message || "Failed to update role. Please try again.");
+        }
+    };
+
+    const handleLeaveGroup = async (memberId: string, chatId: string, operation_perf_id: string | undefined) => {
+       try {
+            const res = await axios.post(`/api/chats/Add_Remove?method=leave`, {
+                memberId, chatId, operation_perf_id
+            })
+
+            if (res.data.message === "Member leaved successfully") {
+                setMembers(prev => prev.filter(m => m.id !== memberId));
+
+                //remove the member also from socket room
+                socket?.emit(
+                    "memberRemove",
+                    { memberId , chatId},
+                    (result: { success: boolean; message?: string }) => {
+                        if (result.success) {
+                            alert("you left out");
+                        } else {
+                            alert(result.message || "Failed to leave");
+                        }
+                    }
+                );
+
+            } 
+        } catch (error: any) {
+            console.error("leaving error:", error);
+            alert("you left the group");
         }
     };
     return (
@@ -139,9 +196,16 @@ const SettingModal = ({
                                                     <button
                                                         onClick={() => handleUpgradeRole(member.id, currentChatId, currentUserId)}
                                                         className="p-1.5 hover:bg-gray-200 rounded"
-                                                        title="Change Role"
+                                                        title="Promote to Admin"
                                                     >
                                                         <Shield className="h-4 w-4 text-gray-600" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDemoteRole(member.id, currentChatId, currentUserId)}
+                                                        className="p-1.5 hover:bg-gray-200 rounded"
+                                                        title="Demote to Member"
+                                                    >
+                                                        <ShieldOff className="h-4 w-4 text-gray-600" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleRemoveMember(member.id, currentChatId, currentUserId)}
@@ -176,7 +240,7 @@ const SettingModal = ({
                                 </button>
 
                                 <button
-                                    onClick={handleLeaveGroup}
+                                     onClick={() => handleLeaveGroup(currentUserId, currentChatId, currentUserId)}
                                     className="w-full flex items-center gap-3 p-3 hover:bg-red-50 rounded transition"
                                 >
                                     <LogOut className="h-5 w-5 text-red-600" />

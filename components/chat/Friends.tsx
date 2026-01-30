@@ -14,7 +14,7 @@ export default function Friends() {
     const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
     const { data: session, status } = useSession()
 
-    // Function to get initials from name
+    
     const getInitials = (name: string) => {
         return name
             .split(' ')
