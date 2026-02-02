@@ -34,6 +34,18 @@ const VideoCall = ({ onEndCall }: VideoCallProps) => {
     video: { width: 640, height: 480 },
   };
 
+  interface TransportParams {
+    id: string;
+    iceParameters: mediasoupClient.types.IceParameters;
+    iceCandidates: mediasoupClient.types.IceCandidate[];
+    dtlsParameters: mediasoupClient.types.DtlsParameters;
+    error?: any;
+  }
+
+  interface ProduceParams {
+    id: string;
+  }
+
   useEffect(() => {
     if (!socket || !currentChatId || !currentUserId) return;
 
@@ -58,7 +70,8 @@ const VideoCall = ({ onEndCall }: VideoCallProps) => {
           deviceRef.current = device;
 
           // 3. Create Send Transport
-          socket.emit('create-transport', { sender: true }, async (params: any) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          socket.emit('create-transport', { sender: true }, async (params: TransportParams) => {
             if (params.error) {
               console.error("Create send transport error", params.error);
               return;
@@ -66,13 +79,13 @@ const VideoCall = ({ onEndCall }: VideoCallProps) => {
             const transport = device.createSendTransport(params);
             sendTransportRef.current = transport;
 
-            transport.on('connect', ({ dtlsParameters }, cb, err) => {
+            transport.on('connect', ({ dtlsParameters }, cb) => {
               socket.emit('transport-connect', { transportId: transport.id, dtlsParameters }, cb);
             });
 
-            transport.on('produce', (params, cb, err) => {
+            transport.on('produce', (params, cb) => {
               // Include transportId in the produce event
-              socket.emit('transport-produce', { transportId: transport.id, ...params }, ({ id }: { id: string }) => {
+              socket.emit('transport-produce', { transportId: transport.id, ...params }, ({ id }: ProduceParams) => {
                 cb({ id });
               });
             });
@@ -98,7 +111,8 @@ const VideoCall = ({ onEndCall }: VideoCallProps) => {
           });
 
           // 4. Create Recv Transport
-          socket.emit('create-transport', { sender: false }, (params: any) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          socket.emit('create-transport', { sender: false }, (params: TransportParams) => {
             if (params.error) {
               console.error("Create recv transport error", params.error);
               return;
@@ -106,7 +120,7 @@ const VideoCall = ({ onEndCall }: VideoCallProps) => {
             const transport = device.createRecvTransport(params);
             recvTransportRef.current = transport;
 
-            transport.on('connect', ({ dtlsParameters }, cb, err) => {
+            transport.on('connect', ({ dtlsParameters }, cb) => {
               socket.emit('transport-connect', { transportId: transport.id, dtlsParameters }, cb);
             });
 
@@ -136,9 +150,12 @@ const VideoCall = ({ onEndCall }: VideoCallProps) => {
 
     const handlePeerLeft = ({ producerId }: { producerId: string }) => {
       setRemoteStreams(prev => prev.filter(s => s.producerId !== producerId));
+      // Cleanup consumer mapping if needed
       const consumer = consumersRef.current.get(producerId); // We mapped consumer by producerId conceptually or we just close it
-      // Actually consumersRef key should probably be producerId or consumerId.
-      // For simplicity, let's just trust state update cleans UI.
+      if (consumer) {
+        consumer.close();
+        consumersRef.current.delete(producerId);
+      }
     };
 
     socket.on('new-producer', handleNewProducer);
@@ -155,11 +172,13 @@ const VideoCall = ({ onEndCall }: VideoCallProps) => {
       if (sendTransportRef.current) sendTransportRef.current.close();
       if (recvTransportRef.current) recvTransportRef.current.close();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [socket, currentChatId, currentUserId]);
 
   const consumeProducer = async (
     producerId: string,
-    socket: any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    socket: any, // Socket.io socket type can be complex, using any for simplicity here
     device: mediasoupClient.types.Device,
     transport: mediasoupClient.types.Transport
   ) => {

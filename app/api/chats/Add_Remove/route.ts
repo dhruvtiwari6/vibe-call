@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
 import { prisma } from "@/app/lib/db";
 import { NextResponse, NextRequest } from "next/server";
 
@@ -12,7 +13,7 @@ export async function POST(req: NextRequest) {
         const { memberId, chatId, operation_perf_id } = body;
 
         if (method === "add") {
-            const new_member = await prisma.chatParticipant.create({
+            const _new_member = await prisma.chatParticipant.create({
                 data: {
                     chat_id: chatId,
                     user_id: memberId

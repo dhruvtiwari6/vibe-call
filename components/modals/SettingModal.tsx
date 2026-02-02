@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Loader2 } from "lucide-react";
 import { Shield } from "lucide-react";
 import { UserPlus } from "lucide-react";

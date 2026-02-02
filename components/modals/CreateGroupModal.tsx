@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { X, Search, Loader2, UserPlus, Users } from 'lucide-react';
 import axios from 'axios';

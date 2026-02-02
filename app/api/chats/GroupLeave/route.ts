@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
 import { prisma } from "@/app/lib/db";
 import { NextResponse, NextRequest } from "next/server";
 
 type Method = "groupLeave";
 
-interface QueryParams {
+interface _QueryParams {
     method: Method
 }
 

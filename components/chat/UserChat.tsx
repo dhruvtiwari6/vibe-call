@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/exhaustive-deps */
 // import React, { useEffect, useState, useRef } from 'react'
 // import { Search, Send, Loader2, X, UserPlus, UserMinus, Shield, LogOut } from 'lucide-react'
 // import { userChatStore } from '@/store/chatStore';

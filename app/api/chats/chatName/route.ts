@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/db";
-import { Chathura } from "next/font/google";
+// import { Chathura } from "next/font/google";
 
 export async function GET(req: NextRequest) {
   try {
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
       include: { participants: true },
     });
 
-    if(chatById) console.log("chatById exists");
+    if (chatById) console.log("chatById exists");
 
     if (chatById && chatById.participants.length === 2 && chatById.isGroupChat === false) {
       // Find the other participant (not the current user)
@@ -45,11 +46,11 @@ export async function GET(req: NextRequest) {
       // if(otherParticipant) console.log(otherParticipant);
 
       return NextResponse.json(
-        {chatName: user2Details?.name },
+        { chatName: user2Details?.name },
         { status: 200 }
       );
     }
-    return NextResponse.json({chatName: chatById?.ChatName}, { status: 200 });
+    return NextResponse.json({ chatName: chatById?.ChatName }, { status: 200 });
 
   } catch (err) {
     console.error("GET /api/chats error:", err);

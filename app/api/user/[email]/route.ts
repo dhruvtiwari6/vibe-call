@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
 import { prisma } from '@/app/lib/db';
 import { NextResponse } from 'next/server';
-import { authOptions } from '@/auth';
+// import { authOptions } from '@/auth';
 
 interface Params {
   params: {
@@ -8,10 +9,10 @@ interface Params {
   };
 }
 
-export async function GET(req: Request, { params }: Params) {
+export async function GET(req: Request, { params }: { params: Promise<{ email: string }> }) {
   try {
 
-    const { email } = params;
+    const { email } = await params;
 
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });

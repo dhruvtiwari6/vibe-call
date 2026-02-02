@@ -59,7 +59,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 //     }
 
 //     // Find existing chat
-//     let chat = await prisma.chats.findFirst({
+//     const chat = await prisma.chats.findFirst({
 //       where: { id: recipientId },
 //     });
 
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     }
 
     // 🧩 Find or create chat
-    let chat = await prisma.chats.findFirst({
+    const chat = await prisma.chats.findFirst({
       where: { id: recipientId },
     });
 
