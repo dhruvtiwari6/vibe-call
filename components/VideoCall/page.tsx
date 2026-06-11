@@ -516,19 +516,19 @@ import { userChatStore } from '@/store/chatStore';
 const VideoCall = () => {
   const { socket } = userChatStore();
 
-  const deviceRef = useRef(null);
-  const localSendTransportRef = useRef(null);
-  const localRecvTransportRef = useRef(null);
+  const deviceRef = useRef<any>(null);
+  const localSendTransportRef = useRef<any>(null);
+  const localRecvTransportRef = useRef<any>(null);
   
-  const consumersRef = useRef(new Map());
-  const ownProducerIdsRef = useRef(new Set());
-  const remoteTracksRef = useRef(new Map());
+  const consumersRef = useRef<Map<string, any>>(new Map());
+  const ownProducerIdsRef = useRef<Set<string>>(new Set());
+  const remoteTracksRef = useRef<Map<string, any>>(new Map());
 
-  const localVideoRef = useRef(null);
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const [remoteStreams, setRemoteStreams] = useState(new Map());
   const [isInitialized, setIsInitialized] = useState(false);
 
-  const updateRemoteStream = useCallback((socketId) => {
+  const updateRemoteStream = useCallback((socketId: string) => {
     const tracks = remoteTracksRef.current.get(socketId);
     if (!tracks) return;
 
@@ -547,8 +547,8 @@ const VideoCall = () => {
     }
   }, []);
 
-  const consumeProducer = useCallback(async (producerId, producerSocketId) => {
-    if (!localRecvTransportRef.current || !deviceRef.current) {
+  const consumeProducer = useCallback(async (producerId: string, producerSocketId: string) => {
+    if (!socket || !localRecvTransportRef.current || !deviceRef.current) {
       console.error('❌ Not ready to consume');
       return;
     }
@@ -573,7 +573,7 @@ const VideoCall = () => {
           producerId,
           transportId: localRecvTransportRef.current.id,
         },
-        async (cb) => {
+        async (cb: any) => {
           if (!cb || cb.error) {
             console.error('❌ Consume callback error:', cb?.error);
             return;
@@ -632,15 +632,20 @@ const VideoCall = () => {
   }, [socket, updateRemoteStream]);
 
   const setupConsumer = useCallback(() => {
-    return new Promise((resolve) => {
+    return new Promise<void>((resolve) => {
+      if (!socket) {
+        console.error('❌ No socket available');
+        resolve();
+        return;
+      }
       console.log('📥 Requesting recv transport creation...');
-      socket.emit('create-transport', { sender: false }, (cb) => {
+      socket.emit('create-transport', { sender: false }, (cb: any) => {
         console.log('📥 Creating recv transport');
 
         const recvTransport = deviceRef.current.createRecvTransport(cb);
         localRecvTransportRef.current = recvTransport;
 
-        recvTransport.on('connect', ({ dtlsParameters }, callback) => {
+        recvTransport.on('connect', ({ dtlsParameters }: any, callback: any) => {
           console.log('🔗 Recv transport connecting...');
           socket.emit(
             'transport-recv-connect',
@@ -652,7 +657,7 @@ const VideoCall = () => {
           );
         });
 
-        recvTransport.on('connectionstatechange', (state) => {
+        recvTransport.on('connectionstatechange', (state: any) => {
           console.log('📡 Recv transport connection state:', state);
         });
 
@@ -663,7 +668,12 @@ const VideoCall = () => {
   }, [socket]);
 
   const setupProducer = useCallback(() => {
-    return new Promise(async (resolve) => {
+    return new Promise<void>(async (resolve) => {
+      if (!socket) {
+        console.error('❌ No socket available');
+        resolve();
+        return;
+      }
       try {
         console.log('🎥 Requesting user media...');
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -676,13 +686,13 @@ const VideoCall = () => {
 
         console.log('✅ Got user media');
 
-        socket.emit('create-transport', { sender: true }, async (cb) => {
+        socket.emit('create-transport', { sender: true }, async (cb: any) => {
           console.log('📤 Creating send transport');
           
           const senderTransport = deviceRef.current.createSendTransport(cb);
           localSendTransportRef.current = senderTransport;
 
-          senderTransport.on('connect', ({ dtlsParameters }, callback) => {
+          senderTransport.on('connect', ({ dtlsParameters }: any, callback: any) => {
             console.log('🔗 Send transport connecting...');
             socket.emit(
               'transport-connect',
@@ -694,12 +704,12 @@ const VideoCall = () => {
             );
           });
 
-          senderTransport.on('produce', ({ kind, rtpParameters }, callback) => {
+          senderTransport.on('produce', ({ kind, rtpParameters }: any, callback: any) => {
             console.log('📤 Producing:', kind);
             socket.emit(
               'transport-produce',
               { kind, rtpParameters, transportId: senderTransport.id },
-              ({ id }) => {
+              ({ id }: any) => {
                 console.log('✅ Produced with ID:', id, 'kind:', kind);
                 ownProducerIdsRef.current.add(id);
                 callback({ id });
@@ -751,7 +761,7 @@ const VideoCall = () => {
     console.log('🚀 Socket available, initializing...');
     let isMounted = true;
 
-    const handleNewProducer = ({ producerId, producerSocketId }) => {
+    const handleNewProducer = ({ producerId, producerSocketId }: { producerId: string; producerSocketId: string }) => {
       console.log('🆕 New producer:', producerId, 'from socket:', producerSocketId);
 
       if (localRecvTransportRef.current && isMounted) {
@@ -760,7 +770,7 @@ const VideoCall = () => {
       }
     };
 
-    const handleProducerClosed = ({ producerId, producerSocketId }) => {
+    const handleProducerClosed = ({ producerId, producerSocketId }: { producerId: string; producerSocketId: string }) => {
       console.log('🔴 Producer closed:', producerId);
 
       const consumer = consumersRef.current.get(producerId);
@@ -797,7 +807,7 @@ const VideoCall = () => {
     const initialize = async () => {
       try {
         console.log('📡 Requesting router capabilities...');
-        socket.emit('routerCapability', async (cb) => {
+        socket.emit('routerCapability', async (cb: { rtpCapabilities: any }) => {
           if (!isMounted) return;
 
           console.log('✅ Router capabilities received');
@@ -810,7 +820,7 @@ const VideoCall = () => {
           await setupConsumer();
 
           // Request existing producers after setup
-          socket.emit('get-producers', (res) => {
+          socket.emit('get-producers', (res: { existingProducers: Array<{ producerId: string, socketId: string }> }) => {
             console.log('📋 Received existing producers:', res.existingProducers);
             
             res.existingProducers.forEach(({ producerId, socketId }) => {
@@ -851,7 +861,7 @@ const VideoCall = () => {
       }
 
       if (localVideoRef.current?.srcObject) {
-        localVideoRef.current.srcObject.getTracks().forEach((t) => t.stop());
+        (localVideoRef.current.srcObject as MediaStream).getTracks().forEach((t) => t.stop());
       }
 
       ownProducerIdsRef.current.clear();

@@ -118,7 +118,7 @@ export const userChatStore = create<UserChats>((set, get) => ({
 
 
     createSocket: (id: string) => {
-        const socketInstance = io(`http://localhost:${process.env.NEXT_PUBLIC_SOCKET_PORT}`, {
+        const socketInstance = io(process.env.NEXT_PUBLIC_SOCKET_PORT ? `http://localhost:${process.env.NEXT_PUBLIC_SOCKET_PORT}` : undefined, {
             transports: ['websocket', 'polling'],
             query: { userId: id }
         });
@@ -128,6 +128,16 @@ export const userChatStore = create<UserChats>((set, get) => ({
         socketInstance.on('connect', () => {
             console.log('✅ connected to the socket server');
             set({ socket: socketInstance });
+
+            const chats = get().chats;
+            if (chats && chats.length > 0) {
+                socketInstance.emit('joinRoom', { allChats: chats, userId: id });
+            }
+
+            const currentChatId = get().currentChatId;
+            if (currentChatId) {
+                socketInstance.emit("Status", { id, chatId: currentChatId });
+            }
         });
 
         socketInstance.on('disconnect', () => {
