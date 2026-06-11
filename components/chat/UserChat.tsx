@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { Search, Send, Loader2, X, Phone, PhoneOff } from 'lucide-react'
 import { userChatStore } from '@/store/chatStore';
+import { useSession } from 'next-auth/react';
 import axios from 'axios'
 import SettingModal from '../modals/SettingModal';
 import AddMemberModal from '../modals/AddMemberModal';
@@ -34,6 +35,7 @@ interface Message {
 }
 
 function UserChat() {
+  const { data: session } = useSession();
   const {
     currentChatId,
     prevChatId,
@@ -82,31 +84,11 @@ function UserChat() {
     socket?.emit("video call has been started", {
       chatId: currentChatId,
       org: currentUserId,
-      callerName: currentChatName // or use actual user name
+      callerName: session?.user?.name || "Someone"
     });
     setVideoCall(true);
   }
 
-  // Handle accepting the call
-  const handleAcceptCall = () => {
-    console.log("Call accepted");
-    socket?.emit("call accepted", {
-      chatId: currentChatId,
-      userId: currentUserId
-    });
-    setIncomingCall(false);
-    setVideoCall(true);
-  }
-
-  // Handle rejecting the call
-  const handleRejectCall = () => {
-    console.log("Call rejected");
-    socket?.emit("call rejected", {
-      chatId: currentChatId,
-      userId: currentUserId
-    });
-    setIncomingCall(false);
-  }
 
 
   useEffect(() => {
@@ -648,41 +630,7 @@ function UserChat() {
         />
       )}
 
-      {/* {incomingCall && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 animate-bounce-in">
-            <div className="text-center">
-              <div className="mx-auto w-20 h-20 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mb-4 animate-pulse">
-                <Phone className="h-10 w-10 text-white" />
-              </div>
 
-=              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                Incoming Video Call
-              </h3>
-              <p className="text-gray-600 mb-6">
-                {callerName || 'Someone'} is calling you...
-              </p>
-
-              <div className="flex gap-4 justify-center">
-                <button
-                  onClick={handleRejectCall}
-                  className="flex items-center gap-2 px-6 py-3 bg-red-500 text-white rounded-full hover:bg-red-600 transition-all transform hover:scale-105 shadow-lg"
-                >
-                  <PhoneOff className="h-5 w-5" />
-                  Decline
-                </button>
-                <button
-                  onClick={handleAcceptCall}
-                  className="flex items-center gap-2 px-6 py-3 bg-green-500 text-white rounded-full hover:bg-green-600 transition-all transform hover:scale-105 shadow-lg"
-                >
-                  <Phone className="h-5 w-5" />
-                  Accept
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )} */}
 
       {/* Video Call Component */}
       {videoCall && (

@@ -2,7 +2,7 @@
 'use client'
 
 import { Input } from "@/components/ui/input"
-import { Search, Menu, Loader2, Users } from "lucide-react"
+import { Search, Menu, Loader2, Users, Phone, PhoneOff } from "lucide-react"
 import { useSidebarStore } from "@/store/sideBarStore"
 import Friends from "@/components/chat/Friends"
 import UserChat from "@/components/chat/UserChat"
@@ -40,8 +40,11 @@ export default function Chats() {
         currentUserId, 
         setCurrentChatName, 
         currentChatName, 
-        createSocket ,
-
+        createSocket,
+        incomingCall,
+        callerName,
+        acceptCall,
+        rejectCall
     } = userChatStore();
     const { data: session, status } = useSession();
 
@@ -258,6 +261,43 @@ export default function Chats() {
             <div className='flex-1 bg-gray-50 flex items-center justify-center p-4 md:ml-0'>
                 <UserChat />
             </div>
+
+            {/* Incoming Call Overlay */}
+            {incomingCall && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md">
+                    <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 animate-bounce-in border border-gray-100">
+                        <div className="text-center">
+                            <div className="mx-auto w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center mb-4 animate-pulse shadow-md">
+                                <Phone className="h-10 w-10 text-white" />
+                            </div>
+
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">
+                                Incoming Video Call
+                            </h3>
+                            <p className="text-gray-600 mb-6 font-medium">
+                                {callerName || 'Someone'} is calling you...
+                            </p>
+
+                            <div className="flex gap-4 justify-center">
+                                <button
+                                    onClick={rejectCall}
+                                    className="flex items-center gap-2 px-6 py-3 bg-rose-500 text-white rounded-full hover:bg-rose-600 transition-all transform hover:scale-105 shadow-md font-semibold"
+                                >
+                                    <PhoneOff className="h-5 w-5" />
+                                    Decline
+                                </button>
+                                <button
+                                    onClick={acceptCall}
+                                    className="flex items-center gap-2 px-6 py-3 bg-emerald-500 text-white rounded-full hover:bg-emerald-600 transition-all transform hover:scale-105 shadow-md font-semibold"
+                                >
+                                    <Phone className="h-5 w-5" />
+                                    Accept
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

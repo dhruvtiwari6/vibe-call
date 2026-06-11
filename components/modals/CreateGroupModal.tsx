@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, Loader2, UserPlus, Users } from 'lucide-react';
 import axios from 'axios';
+import { userChatStore } from '@/store/chatStore';
 
 interface SearchUser {
   id: string;
@@ -17,13 +18,14 @@ interface CreateGroupModalProps {
 }
 
 export default function CreateGroupModal({ onClose, currentUserId, onGroupCreated }: CreateGroupModalProps) {
+  const { socket } = userChatStore();
   const [groupName, setGroupName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchUsers, setSearchUsers] = useState<SearchUser[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<SearchUser[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [creating, setCreating] = useState(false);
-
+  
   // Search users with debounce
   useEffect(() => {
     const delayDebounce = setTimeout(async () => {
@@ -93,6 +95,8 @@ export default function CreateGroupModal({ onClose, currentUserId, onGroupCreate
       });
 
       if (res.status === 200 || res.status === 201) {
+        // Notify all members via socket!
+        socket?.emit("addedToGroup", { chatId: res.data.chat.id, members: [...memberIds] });
         alert('Group created successfully!');
         onGroupCreated();
         onClose();

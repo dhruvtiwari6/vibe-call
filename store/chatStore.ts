@@ -45,15 +45,19 @@ interface UserChats {
     currentChatId?: string
     prevChatId: string
     currentUserId?: string
+    currentEmail?: string
     cursor?: string | null
     recentMessages: Array<Message>
     count?: Map<string, number>
     incomingCall: boolean;
     videoCall: boolean;
     callerName?: string;
+    incomingCallChatId?: string;
     setVideoCall: (data: boolean) => void
     setIncomingCall: (data: boolean) => void
     setCallerName: (name: string) => void
+    acceptCall: () => void
+    rejectCall: () => void
     groupCreationFetching : (email: string) => Promise<void>
 }
 
@@ -64,6 +68,7 @@ export const userChatStore = create<UserChats>((set, get) => ({
     currentChatId: undefined,
     prevChatId: "",
     currentUserId: undefined,
+    currentEmail: undefined,
     cursor: undefined,
     currentChatName: "",
     currentStatus: "offline",
@@ -73,6 +78,7 @@ export const userChatStore = create<UserChats>((set, get) => ({
     incomingCall: false,
     videoCall: false,
     callerName: undefined,
+    incomingCallChatId: undefined,
 
     fetchRecentChats: async (email: string) => {
         set({ isLoading: true });
@@ -81,7 +87,8 @@ export const userChatStore = create<UserChats>((set, get) => ({
             const response = await axios.get('/api/chats/recent', { params: { email } });
             set((state) => ({
                 chats: [...state.chats, ...response.data.chats],
-                isLoading: false
+                isLoading: false,
+                currentEmail: email
             }));
 
             const socket = get().socket;
@@ -101,7 +108,8 @@ export const userChatStore = create<UserChats>((set, get) => ({
             const response = await axios.get('/api/chats/recent', { params: { email } });
             set((state) => ({
                 chats: [...response.data.chats],
-                isLoading: false
+                isLoading: false,
+                currentEmail: email
             }));
 
             // console.log("all chats : " , )
@@ -177,6 +185,14 @@ export const userChatStore = create<UserChats>((set, get) => ({
             set({ currentStatus: data.status });
         });
 
+        socketInstance.on('addedToGroup', (data) => {
+            console.log("Added to new group:", data.chatId);
+            const email = get().currentEmail;
+            if (email) {
+                get().groupCreationFetching(email);
+            }
+        });
+
         socketInstance.on('userStatusUpdate', (data) => {
             const currentChatId = get().currentChatId;
             if (currentChatId) {
@@ -190,10 +206,11 @@ export const userChatStore = create<UserChats>((set, get) => ({
 
         // Listen for incoming video calls
         socketInstance.on("friend started video call", (data) => {
-            console.log("Incoming video call from:", data.callerName);
+            console.log("Incoming video call from:", data.callerName, "for chat:", data.chatId);
             set({
                 incomingCall: true,
-                callerName: data.callerName
+                callerName: data.callerName,
+                incomingCallChatId: data.chatId
             });
         });
 
@@ -237,4 +254,33 @@ export const userChatStore = create<UserChats>((set, get) => ({
     setVideoCall: (data: boolean) => set({ videoCall: data }),
     setIncomingCall: (data: boolean) => set({ incomingCall: data }),
     setCallerName: (name: string) => set({ callerName: name }),
+
+    acceptCall: () => {
+        const socket = get().socket;
+        const chatId = get().incomingCallChatId;
+        const userId = get().currentUserId;
+        if (socket && chatId && userId) {
+            console.log("Accepting call for chatId:", chatId);
+            socket.emit("call accepted", { chatId, userId });
+            set({
+                incomingCall: false,
+                videoCall: true,
+                currentChatId: chatId
+            });
+        }
+    },
+
+    rejectCall: () => {
+        const socket = get().socket;
+        const chatId = get().incomingCallChatId;
+        const userId = get().currentUserId;
+        if (socket && chatId && userId) {
+            console.log("Rejecting call for chatId:", chatId);
+            socket.emit("call rejected", { chatId, userId });
+        }
+        set({
+            incomingCall: false,
+            incomingCallChatId: undefined
+        });
+    },
 }));

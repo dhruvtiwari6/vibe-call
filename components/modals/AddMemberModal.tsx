@@ -47,7 +47,7 @@ const AddMemberModal = ({
 }: AddMemberModalProps) => {
 
     const [addingMemberId, setAddingMemberId] = useState<string | null>(null);
-    const {currentChatId, currentUserId} = userChatStore();
+    const {currentChatId, currentUserId, socket} = userChatStore();
 
 
     const handleAddMember = async (userId: string) => {
@@ -60,6 +60,9 @@ const AddMemberModal = ({
             });
 
             if (res.data.message === "new member added successfully") {
+                // Notify the added user via socket!
+                socket?.emit("addedToGroup", { chatId: currentChatId, members: [userId] });
+
                 const userToAdd = searchUsers.find(u => u.id === userId);
 
                 if (userToAdd) {

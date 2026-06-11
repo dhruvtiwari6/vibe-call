@@ -1148,6 +1148,19 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('addedToGroup', (data) => {
+    try {
+      const { chatId, members } = data;
+      if (Array.isArray(members)) {
+        members.forEach((memberId) => {
+          io.to(memberId).emit('addedToGroup', { chatId });
+        });
+      }
+    } catch (error) {
+      console.error('Error handling addedToGroup event:', error);
+    }
+  });
+
   socket.on('joinRoom', async (data) => {
     try {
       const { allChats, userId: joinUserId } = data;

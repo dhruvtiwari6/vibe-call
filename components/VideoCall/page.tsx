@@ -514,7 +514,7 @@ import * as mediasoupClient from 'mediasoup-client';
 import { userChatStore } from '@/store/chatStore';
 
 const VideoCall = () => {
-  const { socket } = userChatStore();
+  const { socket, setVideoCall } = userChatStore();
 
   const deviceRef = useRef<any>(null);
   const localSendTransportRef = useRef<any>(null);
@@ -870,59 +870,84 @@ const VideoCall = () => {
   }, [socket, setupProducer, setupConsumer, consumeProducer, updateRemoteStream]);
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h2>WebRTC Multi-User Video Chat</h2>
-      <p>Status: {isInitialized ? '✅ Connected' : '⏳ Connecting...'}</p>
-
-      <div style={{ marginTop: '20px' }}>
-        <h3>My Video</h3>
-        <video
-          ref={localVideoRef}
-          autoPlay
-          muted
-          playsInline
-          style={{ 
-            width: '400px',
-            height: '300px',
-            border: '2px solid #333', 
-            borderRadius: '8px',
-            backgroundColor: '#000',
-            objectFit: 'cover'
-          }}
-        />
+    <div className="bg-slate-950 min-h-screen text-white p-6 flex flex-col select-none">
+      <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight">WebRTC Multi-User Video Call</h2>
+          <div className="flex items-center gap-2 mt-1">
+            <span className={`h-2.5 w-2.5 rounded-full ${isInitialized ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-pulse'}`}></span>
+            <p className="text-xs text-slate-400 font-medium">
+              {isInitialized ? 'Connected' : 'Connecting...'}
+            </p>
+          </div>
+        </div>
+        <button 
+          onClick={() => setVideoCall(false)}
+          className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-rose-900/30 transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V3zm11 4a1 1 0 10-2 0v4a1 1 0 102 0V7zm-5 2a1 1 0 10-2 0v2a1 1 0 102 0V9z" clipRule="evenodd" />
+          </svg>
+          Leave Call
+        </button>
       </div>
 
-      <div style={{ marginTop: '20px' }}>
-        <h3>Remote Videos ({remoteStreams.size})</h3>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px' }}>
-          {Array.from(remoteStreams.entries()).map(([socketId, stream]) => (
-            <div key={socketId} style={{ textAlign: 'center' }}>
-              <p style={{ margin: '5px 0', fontSize: '12px', fontWeight: 'bold' }}>
-                User: {socketId.slice(0, 8)}
-              </p>
-              <video
-                ref={el => {
-                  if (el && stream) {
-                    el.srcObject = stream;
-                    // el.play().catch(e => console.error('Play error:', e));
-                  }
-                }}
-                autoPlay
-                playsInline
-                style={{
-                  width: '300px',
-                  height: '225px',
-                  border: '2px solid #666',
-                  borderRadius: '8px',
-                  backgroundColor: '#000',
-                  objectFit: 'cover'
-                }}
-              />
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left column / Top row: My Video */}
+        <div className="lg:col-span-1 bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex flex-col">
+          <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">My Feed</h3>
+          <div className="relative flex-1 aspect-video lg:aspect-auto min-h-[240px] rounded-xl overflow-hidden bg-slate-950 border border-slate-800">
+            <video
+              ref={localVideoRef}
+              autoPlay
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute bottom-3 left-3 px-2.5 py-1 bg-black/60 backdrop-blur-md rounded-md text-xs font-semibold text-white">
+              You
             </div>
-          ))}
-          {remoteStreams.size === 0 && (
-            <p style={{ color: '#666' }}>No remote users yet.</p>
-          )}
+          </div>
+        </div>
+
+        {/* Right column: Remote Videos */}
+        <div className="lg:col-span-2 bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex flex-col">
+          <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">
+            Participants ({remoteStreams.size})
+          </h3>
+          <div className="flex-1 overflow-y-auto">
+            {remoteStreams.size === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center text-slate-500 mb-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <p className="text-slate-400 font-medium">Waiting for other participants to join...</p>
+                <p className="text-xs text-slate-500 mt-1">They will see the call option on their screen.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {Array.from(remoteStreams.entries()).map(([socketId, stream]) => (
+                  <div key={socketId} className="relative aspect-video rounded-xl overflow-hidden bg-slate-950 border border-slate-800">
+                    <video
+                      ref={el => {
+                        if (el && stream) {
+                          el.srcObject = stream;
+                        }
+                      }}
+                      autoPlay
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute bottom-3 left-3 px-2.5 py-1 bg-black/60 backdrop-blur-md rounded-md text-xs font-semibold text-white">
+                      User {socketId.slice(0, 8)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
