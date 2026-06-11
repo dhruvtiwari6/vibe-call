@@ -514,7 +514,7 @@ import * as mediasoupClient from 'mediasoup-client';
 import { userChatStore } from '@/store/chatStore';
 
 const VideoCall = () => {
-  const { socket, setVideoCall } = userChatStore();
+  const { socket, setVideoCall, currentChatId } = userChatStore();
 
   const deviceRef = useRef<any>(null);
   const localSendTransportRef = useRef<any>(null);
@@ -705,10 +705,10 @@ const VideoCall = () => {
           });
 
           senderTransport.on('produce', ({ kind, rtpParameters }: any, callback: any) => {
-            console.log('📤 Producing:', kind);
+            console.log('📤 Producing:', kind, 'for chat:', currentChatId);
             socket.emit(
               'transport-produce',
-              { kind, rtpParameters, transportId: senderTransport.id },
+              { kind, rtpParameters, transportId: senderTransport.id, chatId: currentChatId },
               ({ id }: any) => {
                 console.log('✅ Produced with ID:', id, 'kind:', kind);
                 ownProducerIdsRef.current.add(id);
@@ -820,14 +820,18 @@ const VideoCall = () => {
           await setupConsumer();
 
           // Request existing producers after setup
-          socket.emit('get-producers', (res: { existingProducers: Array<{ producerId: string, socketId: string }> }) => {
-            console.log('📋 Received existing producers:', res.existingProducers);
-            
-            res.existingProducers.forEach(({ producerId, socketId }) => {
-              console.log('Consuming existing producer:', producerId, 'from:', socketId);
-              consumeProducer(producerId, socketId);
-            });
-          });
+          socket.emit(
+            'get-producers',
+            { chatId: currentChatId },
+            (res: { existingProducers: Array<{ producerId: string, socketId: string }> }) => {
+              console.log('📋 Received existing producers:', res.existingProducers);
+              
+              res.existingProducers.forEach(({ producerId, socketId }) => {
+                console.log('Consuming existing producer:', producerId, 'from:', socketId);
+                consumeProducer(producerId, socketId);
+              });
+            }
+          );
 
           if (!isMounted) return;
 

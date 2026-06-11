@@ -548,7 +548,7 @@ interface PeerData {
   // producerId  ->  { socketId, producer, chatId }
   const producers = new Map<
     string,
-    { socketId: string; producer: mediasoup.types.Producer }
+    { socketId: string; producer: mediasoup.types.Producer; chatId: string }
   >();
 
   const ONLINE_USERS_KEY = 'onlineUsers';
@@ -1069,14 +1069,17 @@ io.on('connection', (socket) => {
   // *** NEW: Send existing producers immediately on connection ***
   socket.on(
     'get-producers',
-    (cb: (res: { 
-      existingProducers: Array<{ producerId: string, socketId: string }> 
-    }) => void) => {
+    (
+      { chatId }: { chatId: string },
+      cb: (res: { 
+        existingProducers: Array<{ producerId: string, socketId: string }> 
+      }) => void
+    ) => {
       const existingProducers: Array<{ producerId: string, socketId: string }> = [];
       
       producers.forEach((p, id) => {
-        // Don't send your own producers
-        if (p.socketId !== socket.id) {
+        // Don't send your own producers, and filter by chatId
+        if (p.socketId !== socket.id && p.chatId === chatId) {
           existingProducers.push({ 
             producerId: id, 
             socketId: p.socketId 
@@ -1084,7 +1087,7 @@ io.on('connection', (socket) => {
         }
       });
 
-      console.log(`Socket ${socket.id} requested producers. Found: ${existingProducers.length}`);
+      console.log(`Socket ${socket.id} requested producers for chat ${chatId}. Found: ${existingProducers.length}`);
       cb({ existingProducers });
     }
   );
@@ -1104,12 +1107,21 @@ io.on('connection', (socket) => {
     if (peer) {
       // Notify everyone that this user's producers are gone
       peer.producers.forEach((_producer, producerId) => {
+        const prodData = producers.get(producerId);
+        const chatId = prodData?.chatId;
         producers.delete(producerId);
-        // Broadcast to ALL (no room restriction)
-        socket.broadcast.emit('producer-closed', { 
-          producerId,
-          producerSocketId: socket.id
-        });
+        
+        if (chatId) {
+          socket.to(chatId).emit('producer-closed', { 
+            producerId,
+            producerSocketId: socket.id
+          });
+        } else {
+          socket.broadcast.emit('producer-closed', { 
+            producerId,
+            producerSocketId: socket.id
+          });
+        }
       });
 
       peer.transports.forEach((t) => t.close());
@@ -1412,10 +1424,12 @@ io.on('connection', (socket) => {
         kind,
         rtpParameters,
         transportId,
+        chatId,
       }: {
         kind: 'audio' | 'video';
         rtpParameters: mediasoup.types.RtpParameters;
         transportId: string;
+        chatId: string;
       },
       cb: (res: { id: string }) => void
     ) => {
@@ -1429,8 +1443,8 @@ io.on('connection', (socket) => {
 
         const producer = await transport.produce({ kind, rtpParameters });
 
-        // Store without chatId
-        producers.set(producer.id, { socketId: socket.id, producer });
+        // Store with chatId
+        producers.set(producer.id, { socketId: socket.id, producer, chatId });
         peer?.producers.set(producer.id, producer);
 
         console.log(
@@ -1439,11 +1453,13 @@ io.on('connection', (socket) => {
           'kind:',
           kind,
           'by',
-          socket.id
+          socket.id,
+          'in chat:',
+          chatId
         );
 
-        // Broadcast to EVERYONE except sender
-        socket.broadcast.emit('new-producer', { 
+        // Broadcast ONLY to the chat room
+        socket.to(chatId).emit('new-producer', { 
           producerId: producer.id,
           producerSocketId: socket.id
         });
