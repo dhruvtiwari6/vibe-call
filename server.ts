@@ -492,7 +492,8 @@ app.prepare().then(async () => {
     handle(req, res, parsedUrl);
   });
 
-  const pubClient = new Redis();
+    console.log("REDIS_URL =", process.env.REDIS_URL);
+  const pubClient = new Redis(process.env.REDIS_URL!);
   const subClient = pubClient.duplicate();
 
   const io = new SocketIOServer(httpServer, {

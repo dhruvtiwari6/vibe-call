@@ -523,6 +523,7 @@ const VideoCall = () => {
   const consumersRef = useRef<Map<string, any>>(new Map());
   const ownProducerIdsRef = useRef<Set<string>>(new Set());
   const remoteTracksRef = useRef<Map<string, any>>(new Map());
+  const pendingProducersRef = useRef<Array<{ producerId: string; producerSocketId: string }>>([]);
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const [remoteStreams, setRemoteStreams] = useState(new Map());
@@ -549,7 +550,8 @@ const VideoCall = () => {
 
   const consumeProducer = useCallback(async (producerId: string, producerSocketId: string) => {
     if (!socket || !localRecvTransportRef.current || !deviceRef.current) {
-      console.error('❌ Not ready to consume');
+      console.log('⏳ Not ready to consume yet. Queueing producer:', producerId);
+      pendingProducersRef.current.push({ producerId, producerSocketId });
       return;
     }
 
@@ -764,14 +766,16 @@ const VideoCall = () => {
     const handleNewProducer = ({ producerId, producerSocketId }: { producerId: string; producerSocketId: string }) => {
       console.log('🆕 New producer:', producerId, 'from socket:', producerSocketId);
 
-      if (localRecvTransportRef.current && isMounted) {
-        console.log('Attempting to consume new producer');
+      if (isMounted) {
         consumeProducer(producerId, producerSocketId);
       }
     };
 
     const handleProducerClosed = ({ producerId, producerSocketId }: { producerId: string; producerSocketId: string }) => {
       console.log('🔴 Producer closed:', producerId);
+
+      // Remove from pending queue if it's there
+      pendingProducersRef.current = pendingProducersRef.current.filter(p => p.producerId !== producerId);
 
       const consumer = consumersRef.current.get(producerId);
       if (consumer) {
@@ -818,6 +822,14 @@ const VideoCall = () => {
 
           await setupProducer();
           await setupConsumer();
+
+          // Consume any pending producers that arrived during initialization
+          console.log(`📦 Processing ${pendingProducersRef.current.length} pending producers...`);
+          const pending = [...pendingProducersRef.current];
+          pendingProducersRef.current = [];
+          pending.forEach(({ producerId, producerSocketId }) => {
+            consumeProducer(producerId, producerSocketId);
+          });
 
           // Request existing producers after setup
           socket.emit(

@@ -218,8 +218,7 @@ export const userChatStore = create<UserChats>((set, get) => ({
 
         // Listen for call acceptance
         socketInstance.on("call was accepted", (data) => {
-            console.log("Call was accepted by the other user");
-            set({ videoCall: true });
+            console.log("Call was accepted by the other user:", data);
         });
 
         // Listen for call rejection
