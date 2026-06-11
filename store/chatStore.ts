@@ -7,7 +7,9 @@ interface Chats {
     chatId: string,
     latestMessage: string,
     chatName: string,
-    updatedAt: Date
+    isGroupChat: boolean,
+    updatedAt: Date,
+    _allParticipants?: string[]
 }
 
 interface User {
@@ -221,11 +223,22 @@ export const userChatStore = create<UserChats>((set, get) => ({
         });
 
         // Listen for call rejection
-        socketInstance.on("call was rejected", (data) => {
-            console.log("Call was rejected by the other user");
-            set({ videoCall: false });
-            // You can add a notification here
-            alert("Call was declined");
+        socketInstance.on("call was rejected", (data: { chatId: string; rejectedBy: string }) => {
+            console.log("Call was rejected by:", data.rejectedBy);
+            const { chatId, rejectedBy } = data;
+            const chat = get().chats.find(c => c.chatId === chatId);
+            const isGroup = chat ? chat.isGroupChat : false;
+            
+            if (!isGroup) {
+                set({ 
+                    videoCall: false, 
+                    incomingCall: false, 
+                    incomingCallChatId: undefined 
+                });
+                alert("Call was declined");
+            } else {
+                console.log(`Group call declined by user: ${rejectedBy}`);
+            }
         });
     },
 

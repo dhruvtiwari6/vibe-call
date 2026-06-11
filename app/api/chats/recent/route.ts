@@ -85,6 +85,7 @@ export async function GET(req: NextRequest) {
                 id: participant.id, // ChatParticipant id for cursor
                 chatId: chat.id,
                 chatName: chatName,
+                isGroupChat: chat.isGroupChat,
                 updatedAt: chat.updatedAt,
                 _allParticipants: _allParticipants
             };
