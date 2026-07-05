@@ -6,6 +6,7 @@ import { prisma } from "./app/lib/db"
 import bcrypt from 'bcryptjs'
 
 const authOptions: NextAuthConfig = {
+    trustHost: true,
     providers: [
         GitHub({
             clientId: process.env.AUTH_GITHUB_ID!,
