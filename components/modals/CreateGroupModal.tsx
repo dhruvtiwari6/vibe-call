@@ -36,7 +36,8 @@ export default function CreateGroupModal({ onClose, currentUserId, onGroupCreate
 
       try {
         setSearchLoading(true);
-        const res = await axios.get('/api/user/search', {
+        const userSearchApi = process.env.NEXT_PUBLIC_API_USER_SEARCH || '/api/user/search';
+        const res = await axios.get(userSearchApi, {
           params: {
             query: searchQuery,
             limit: 10,

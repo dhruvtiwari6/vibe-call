@@ -15,7 +15,8 @@ const MultiUserVideoChat = () => {
   const consumedProducers = useRef(new Set()); // Track what we already have
 
   useEffect(() => {
-    const s = io('http://localhost:3000');
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000';
+    const s = io(socketUrl);
     setSocket(s);
 
     s.on('new-producer', ({ producerId }) => {

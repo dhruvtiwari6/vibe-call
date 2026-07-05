@@ -85,8 +85,8 @@ export const userChatStore = create<UserChats>((set, get) => ({
     fetchRecentChats: async (email: string) => {
         set({ isLoading: true });
         try {
-            if (!email) throw new Error("email not found");
-            const response = await axios.get('/api/chats/recent', { params: { email } });
+            const recentChatsApi = process.env.NEXT_PUBLIC_API_CHATS_RECENT || '/api/chats/recent';
+            const response = await axios.get(recentChatsApi, { params: { email } });
             set((state) => ({
                 chats: [...state.chats, ...response.data.chats],
                 isLoading: false,
@@ -106,8 +106,8 @@ export const userChatStore = create<UserChats>((set, get) => ({
     groupCreationFetching: async (email: string) => {
         set({ isLoading: true });
         try {
-            if (!email) throw new Error("email not found");
-            const response = await axios.get('/api/chats/recent', { params: { email } });
+            const recentChatsApi = process.env.NEXT_PUBLIC_API_CHATS_RECENT || '/api/chats/recent';
+            const response = await axios.get(recentChatsApi, { params: { email } });
             set((state) => ({
                 chats: [...response.data.chats],
                 isLoading: false,
@@ -128,7 +128,9 @@ export const userChatStore = create<UserChats>((set, get) => ({
 
 
     createSocket: (id: string) => {
-        const socketInstance = io(process.env.NEXT_PUBLIC_SOCKET_PORT ? `http://localhost:${process.env.NEXT_PUBLIC_SOCKET_PORT}` : undefined, {
+        const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 
+            (process.env.NEXT_PUBLIC_SOCKET_PORT ? `http://localhost:${process.env.NEXT_PUBLIC_SOCKET_PORT}` : undefined);
+        const socketInstance = io(socketUrl, {
             transports: ['websocket', 'polling'],
             query: { userId: id }
         });

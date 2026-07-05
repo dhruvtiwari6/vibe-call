@@ -61,10 +61,11 @@ const ProfileNavbar = () => {
         formData.append("file", file);
 
         try {
-            const res = await axios.post("/api/image_upload", formData);
+            const imageUploadApi = process.env.NEXT_PUBLIC_API_IMAGE_UPLOAD || "/api/image_upload";
+            const res = await axios.post(imageUploadApi, formData);
 
             if (res.data.message === "image uploaded") {
-                const response = await axios.put('/api/image_upload/set_avatar', { image_public_url: res.data.url, user_id: currentUserId });
+                const response = await axios.put(`${imageUploadApi}/set_avatar`, { image_public_url: res.data.url, user_id: currentUserId });
 
                 if(response.data.message === "Avatar updated successfully") {
                     setAvatar(res.data.url);

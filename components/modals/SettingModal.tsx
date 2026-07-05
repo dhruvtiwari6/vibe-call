@@ -44,7 +44,8 @@ const SettingModal = ({
 
     const handleRemoveMember = async (memberId: string, chatId: string, operation_perf_id: string | undefined) => {
         try {
-            const res = await axios.post(`/api/chats/Add_Remove?method=remove`, {
+            const chatAddRemoveApi = process.env.NEXT_PUBLIC_API_CHAT_ADD_REMOVE || '/api/chats/Add_Remove';
+            const res = await axios.post(`${chatAddRemoveApi}?method=remove`, {
                 memberId, chatId, operation_perf_id
             })
 
@@ -115,7 +116,8 @@ const SettingModal = ({
 
     const handleLeaveGroup = async (memberId: string, chatId: string, operation_perf_id: string | undefined) => {
        try {
-            const res = await axios.post(`/api/chats/Add_Remove?method=leave`, {
+            const chatAddRemoveApi = process.env.NEXT_PUBLIC_API_CHAT_ADD_REMOVE || '/api/chats/Add_Remove';
+            const res = await axios.post(`${chatAddRemoveApi}?method=leave`, {
                 memberId, chatId, operation_perf_id
             })
 

@@ -53,7 +53,8 @@ const AddMemberModal = ({
     const handleAddMember = async (userId: string) => {
         try {
             setAddingMemberId(userId);
-            const res = await axios.post(`/api/chats/Add_Remove?method=add`, {
+            const chatAddRemoveApi = process.env.NEXT_PUBLIC_API_CHAT_ADD_REMOVE || '/api/chats/Add_Remove';
+            const res = await axios.post(`${chatAddRemoveApi}?method=add`, {
                 memberId: userId,
                 chatId: currentChatId,
                 operation_perf_id: currentUserId

@@ -257,11 +257,10 @@ function UserChat() {
       let fileControl = null;
 
       if (file) {
-        console.log("went into the file sending part");
         const fileData = new FormData();
         fileData.append("file", file);
-
-        const fileRes = await axios.post(`/api/image_upload`, fileData, {
+        const imageUploadApi = process.env.NEXT_PUBLIC_API_IMAGE_UPLOAD || "/api/image_upload";
+        const fileRes = await axios.post(imageUploadApi, fileData, {
           headers: { "Content-Type": "multipart/form-data" }
         });
 

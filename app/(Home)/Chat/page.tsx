@@ -105,7 +105,8 @@ export default function Chats() {
             try {
                 setLoading(true);
 
-                const res = await axios.get("/api/user/search", {
+                const userSearchApi = process.env.NEXT_PUBLIC_API_USER_SEARCH || "/api/user/search";
+                const res = await axios.get(userSearchApi, {
                     params: {
                         query,
                         limit: 10,
