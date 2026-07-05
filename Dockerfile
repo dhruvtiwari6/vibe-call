@@ -1,7 +1,8 @@
-FROM node:20-slim AS deps
+FROM node:22-slim AS deps
 
 RUN apt-get update && apt-get install -y \
     python3 \
+    python3-pip \
     make \
     g++ \
     gcc \
@@ -18,7 +19,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 # Step 2: Build the application
-FROM node:20-slim AS builder
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
@@ -43,7 +44,7 @@ ENV NEXTAUTH_SECRET="dummy_secret_at_least_thirty_two_characters_long"
 RUN npm run build
 
 # Step 3: Production runner
-FROM node:20-slim AS runner
+FROM node:22-slim AS runner
 
 WORKDIR /app
 
