@@ -367,13 +367,13 @@ io.on('connection', (socket) => {
             {
               protocol: 'udp',
               ip: '0.0.0.0',
-              announcedAddress: '127.0.0.1',
+              announcedAddress: process.env.ANNOUNCED_IP,
               portRange: { min: 40000, max: 40100 },
             },
             {
               protocol: 'tcp',
               ip: '0.0.0.0',
-              announcedAddress: '127.0.0.1',
+              announcedAddress: process.env.ANNOUNCED_IP  ,
               portRange: { min: 40000, max: 40100 },
             },
           ],
